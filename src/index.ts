@@ -42,10 +42,13 @@ export interface StatusBorderOptions {
 
 /**
  * An animated status bar pinned to the top row of the terminal: a bright
- * "glow" segment continuously slides across it while a task is running, in
- * whatever color you give it. Settles into a solid color when you call
- * succeed()/fail(). The rest of the terminal (below row 1) keeps scrolling
- * normally, so it doesn't get in the way of your program's own output.
+ * "glow" segment continuously slides across it for as long as start() has
+ * been called and stop() hasn't — mirroring the process's own running
+ * state. succeed()/fail() stop the animation and hold a solid color, but
+ * the row stays reserved until stop() is called explicitly, or the process
+ * exits (a safety net restores the terminal either way). The rest of the
+ * terminal (below row 1) keeps scrolling normally, so it doesn't get in the
+ * way of your program's own output.
  *
  * No-ops safely when stdout isn't an interactive TTY (e.g. piped to a file,
  * or in CI), so it's safe to leave enabled unconditionally.
@@ -61,6 +64,7 @@ export class StatusBorder {
   private active = false;
   private rows = 0;
   private readonly onResize = () => this.drawGlow();
+  private readonly onExit = () => this.stop();
 
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
@@ -113,36 +117,41 @@ export class StatusBorder {
       this.drawGlow();
     }, 1000 / this.fps);
     this.stream.on('resize', this.onResize);
+    // Safety net: if the process exits (normally, via Ctrl+C, or because
+    // the terminal was closed) without an explicit stop(), still restore
+    // the terminal instead of leaving it with a permanently reserved row
+    // and a hidden cursor.
+    process.on('exit', this.onExit);
     return this;
   }
 
-  /** Stop animating, show a solid bar, and release the reserved row shortly after. */
-  private settle(color: BorderColor, holdMs: number): void {
+  /** Stop animating and show a solid bar in `color`. Stays up until stop() is called. */
+  private settle(color: BorderColor): void {
     if (!this.active) return;
     this.color = color;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     this.drawSolid();
-    setTimeout(() => this.stop(), holdMs);
   }
 
-  /** Show a solid green bar briefly, then release the terminal back to normal. */
-  succeed(holdMs = 400): void {
-    this.settle('green', holdMs);
+  /** Stop animating and show a solid green bar, until stop() is called. */
+  succeed(): void {
+    this.settle('green');
   }
 
-  /** Show a solid red bar briefly, then release the terminal back to normal. */
-  fail(holdMs = 400): void {
-    this.settle('red', holdMs);
+  /** Stop animating and show a solid red bar, until stop() is called. */
+  fail(): void {
+    this.settle('red');
   }
 
-  /** Immediately stop animating and release the reserved top row. */
+  /** Stop showing the bar and release the reserved top row. */
   stop(): void {
     if (!this.active) return;
     this.active = false;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     this.stream.removeListener('resize', this.onResize);
+    process.removeListener('exit', this.onExit);
     this.stream.write(resetScrollRegion());
     this.stream.write(CLEAR_LINE);
     this.stream.write(SHOW_CURSOR);

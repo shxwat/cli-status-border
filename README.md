@@ -19,8 +19,9 @@ const border = new StatusBorder({ color: 'cyan' });
 
 border.start();
 await doSomeWork();
-border.succeed(); // solid green flash, then releases the row
-// or: border.fail();  // solid red flash
+border.succeed(); // stops the glow, holds a solid green bar
+// or: border.fail();  // holds a solid red bar
+border.stop(); // release the row whenever you're ready
 ```
 
 You can also change the color while it's animating:
@@ -35,16 +36,19 @@ border.setColor('#ff8800');
 new StatusBorder({
   color: 'green',  // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
   char: '─',       // character the bar is drawn with
-  fps: 20,         // glow animation speed
+  fps: 30,         // glow redraw rate
+  speed: 4,        // columns the glow travels per frame
   stream: process.stdout,
 });
 ```
 
 ## Behavior notes
 
+- The bar stays up for exactly as long as your process is: it appears on `start()` and disappears on `stop()` — nothing releases it automatically.
+- `succeed()`/`fail()` stop the glow animation and hold a solid color, but don't release the row themselves; call `stop()` whenever you're ready to give it back.
+- If your process exits (normally, via Ctrl+C, or the terminal closing) without calling `stop()`, a safety net still restores the terminal so it isn't left with a permanently reserved row.
 - No-ops safely when stdout isn't an interactive TTY (piped output, CI logs, etc.) — safe to leave enabled unconditionally in any CLI tool.
 - Uses a terminal scroll region (`DECSTBM`) to reserve row 1 for the bar, so it doesn't fight with your program's own `console.log` output.
-- `succeed()`/`fail()` hold the solid color for a short moment (default 400ms, configurable via the first argument) before releasing the row back to normal scrolling.
 
 ## Try it
 

@@ -25,6 +25,10 @@ describe('StatusBorder', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    // start() registers a real process.on('exit', ...) safety net; tests
+    // that don't explicitly call stop() would otherwise leak listeners
+    // across the suite.
+    process.removeAllListeners('exit');
   });
 
   it('does nothing when the stream is not a TTY', () => {
@@ -95,17 +99,37 @@ describe('StatusBorder', () => {
     expect(stream.removeListener).toHaveBeenCalledWith('resize', expect.any(Function));
   });
 
-  it('succeed() settles to a solid bar and releases the row after the hold time', () => {
+  it('succeed() stops animating and holds a solid bar until stop() is called', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });
     border.start();
-    border.succeed(200);
+    border.succeed();
 
+    const callsAtSucceed = writes(stream).length;
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(false);
 
-    vi.advanceTimersByTime(200);
+    // no more animation frames once succeeded
+    vi.advanceTimersByTime(1000);
+    expect(writes(stream).length).toBe(callsAtSucceed);
 
+    border.stop();
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(true);
+  });
+
+  it('registers a process exit safety net on start, and removes it on stop', () => {
+    const processOnSpy = vi.spyOn(process, 'on');
+    const processRemoveSpy = vi.spyOn(process, 'removeListener');
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+
+    border.start();
+    expect(processOnSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+
+    border.stop();
+    expect(processRemoveSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+
+    processOnSpy.mockRestore();
+    processRemoveSpy.mockRestore();
   });
 
   it('is safe to call stop() before start()', () => {

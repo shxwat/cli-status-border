@@ -39,7 +39,7 @@ describe('buildFrame', () => {
   });
 
   it('wraps the glow around continuously', () => {
-    const glow = Math.max(10, Math.floor(40 / 1.6));
+    const glow = Math.max(16, Math.floor(40 / 1.1));
     const period = 40 + glow;
     const frameA = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 });
     const frameB = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 + period });

@@ -15,10 +15,12 @@ const log = setInterval(() => {
     const willFail = process.argv[3] === 'fail';
     if (willFail) {
       border.fail();
-      console.log('done (failed)');
+      console.log('done (failed) — bar stays red until stop()');
     } else {
       border.succeed();
-      console.log('done (succeeded)');
+      console.log('done (succeeded) — bar stays green until stop()');
     }
+    // hold the solid color for a bit so you can see it, then release the row
+    setTimeout(() => border.stop(), 1500);
   }
 }, 500);
