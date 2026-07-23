@@ -2,34 +2,34 @@ import { describe, expect, it } from 'vitest';
 
 import { buildFrame, buildSolidFrame } from '../frame';
 
-// eslint-disable-next-line no-control-regex
-const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
+const TAG_PATTERN = /\{[^}]*\}/g;
 
-function stripAnsi(s: string): string {
-  return s.replace(ANSI_PATTERN, '');
+function stripTags(s: string): string {
+  return s.replace(TAG_PATTERN, '');
 }
 
 describe('buildSolidFrame', () => {
   it('produces a solid bar of the requested width', () => {
     const frame = buildSolidFrame({ cols: 20, color: 'green', char: '-' });
-    expect(stripAnsi(frame)).toBe('-'.repeat(20));
+    expect(stripTags(frame)).toBe('-'.repeat(20));
   });
 
-  it('colorizes the bar (output differs from plain text)', () => {
+  it('wraps the text in a blessed color tag', () => {
     const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#' });
-    expect(frame).not.toBe('#'.repeat(10));
+    expect(frame).toMatch(/^\{#[0-9a-f]{6}-fg\}#{10}\{\/\}$/);
   });
 
   it('supports hex colors', () => {
     const frame = buildSolidFrame({ cols: 10, color: '#ff8800', char: '=' });
-    expect(stripAnsi(frame)).toBe('='.repeat(10));
+    expect(stripTags(frame)).toBe('='.repeat(10));
+    expect(frame).toContain('{#ff8800-fg}');
   });
 });
 
 describe('buildFrame', () => {
   it('uses the exact same character for the entire width — never a block glyph', () => {
     const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
-    const plain = stripAnsi(frame);
+    const plain = stripTags(frame);
     expect(plain).toBe('#'.repeat(40));
     expect(plain).not.toMatch(/[█▓▒░]/);
   });

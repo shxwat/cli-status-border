@@ -6,7 +6,7 @@ import { StatusBorder } from '../dist/index.js';
 
 const COLORS = ['green', 'red', 'yellow', 'blue', 'magenta', 'cyan', 'white', 'gray'];
 const SWATCH = {
-  green: '\x1b[38;2;60;220;90m',
+  green: '\x1b[38;2;0;255;65m',
   red: '\x1b[38;2;255;60;60m',
   yellow: '\x1b[38;2;230;220;60m',
   blue: '\x1b[38;2;80;140;255m',
@@ -18,6 +18,7 @@ const SWATCH = {
 const RESET = '\x1b[0m';
 
 let index = 0;
+let activeBorder = null;
 
 function render() {
   console.clear();
@@ -26,24 +27,25 @@ function render() {
     const c = COLORS[i];
     const marker = i === index ? '[x]' : '[ ]';
     const pointer = i === index ? '>' : ' ';
-    console.log(` ${pointer} ${marker} ${SWATCH[c]}${c}  ▀▀▀▀▀▀▀▀▀▀${RESET}`);
+    console.log(` ${pointer} ${marker} ${SWATCH[c]}${c}  ▔▔▔▔▔▔▔▔▔▔${RESET}`);
   }
 }
 
 function preview(color) {
-  console.clear();
-  console.log(`Previewing "${color}" — Ctrl+C to quit.\n`);
-  console.log('Use it in your tool:\n');
-  console.log(`  import { StatusBorder } from 'cli-status-border';`);
-  console.log(`  const border = new StatusBorder({ color: '${color}' });`);
-  console.log(`  border.start();\n`);
-
   const border = new StatusBorder({ color });
+  activeBorder = border;
   border.start();
+  border.log(`Previewing "${color}" — Ctrl+C to quit.`);
+  border.log('');
+  border.log('Use it in your tool:');
+  border.log(`  import { StatusBorder } from 'cli-status-border';`);
+  border.log(`  const border = new StatusBorder({ color: '${color}' });`);
+  border.log(`  border.start();`);
+
   let i = 0;
   setInterval(() => {
     i++;
-    console.log(`still running... ${i}s`);
+    border.log(`still running... ${i}s`);
   }, 1000);
 }
 
@@ -54,7 +56,7 @@ let selected = false;
 process.stdin.on('keypress', (_str, key) => {
   if (!key) return;
   if (key.ctrl && key.name === 'c') {
-    process.stdout.write('\x1b[r\x1b[2K\x1b[?25h'); // restore terminal just in case
+    activeBorder?.stop();
     process.exit(0);
   }
   if (selected) return;

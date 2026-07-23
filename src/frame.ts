@@ -1,11 +1,3 @@
-import { Chalk } from 'chalk';
-
-// A dedicated instance with color forced on: this module always renders for
-// a real terminal (the caller gates on stream.isTTY before using it), so we
-// don't want chalk's own environment auto-detection silently stripping
-// color codes (e.g. under a test runner or a piped stdout).
-const chalk = new Chalk({ level: 3 });
-
 export type BorderColor =
   | 'red'
   | 'green'
@@ -47,9 +39,15 @@ function scale(rgb: RGB, factor: number): RGB {
   return rgb.map((c) => Math.round(Math.max(0, Math.min(255, c * factor)))) as RGB;
 }
 
+function toHex([r, g, b]: RGB): string {
+  const h = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+
+/** Wraps `text` in a blessed color tag (`{#rrggbb-fg}...{/}`) at the given brightness (0-1). */
 export function paint(color: BorderColor, text: string, brightness = 1): string {
-  const [r, g, b] = scale(baseRgb(color), brightness);
-  return chalk.rgb(r, g, b)(text);
+  const hex = toHex(scale(baseRgb(color), brightness));
+  return `{${hex}-fg}${text}{/}`;
 }
 
 /** Builds a solid, full-brightness bar (used for the settled success/fail state). */
@@ -72,7 +70,7 @@ const BRIGHTNESS_LEVELS = 12;
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  /** The single character the whole line is drawn with. Defaults to '▔' (upper one-eighth block). */
+  /** The single character the whole line is drawn with. Defaults to '▔'. */
   char?: string;
   frame: number;
   /** Width of the bright pulse's glow, in columns. Defaults to roughly cols / 6. */
@@ -100,8 +98,8 @@ export function buildFrame(options: {
   const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
 
   // Same character everywhere — only the color (via brightness) changes.
-  // Runs of equal brightness are merged so we emit one ANSI color code per
-  // run instead of per character.
+  // Runs of equal brightness are merged so we emit one color tag per run
+  // instead of per character.
   let out = '';
   let runStart = 0;
   let runBucket = bucketOf(0);
