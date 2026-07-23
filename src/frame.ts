@@ -59,54 +59,71 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const DIM_BRIGHTNESS = 0.18;
+const TRACK_BRIGHTNESS = 0.18;
+const HEAD_THRESHOLD = 0.06; // below this gaussian contribution, render as plain track
 const BRIGHTNESS_LEVELS = 10;
 
 /**
- * Builds one animation frame: a `cols`-wide bar made of `char`, with a
- * smooth glow — thin and dim at its edges, full brightness at its center —
- * sliding continuously across a dim base track as `frame` increases.
+ * Builds one animation frame: a continuous thin `trackChar` line spans the
+ * full width at low brightness, and a brighter, thicker `headChar` pulse —
+ * like a comet with a fading tail — slides across it as `frame` increases.
  */
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  char: string;
+  /** Character used for the constant background track. Defaults to '─'. */
+  trackChar?: string;
+  /** Character used for the moving bright head. Defaults to '█'. */
+  headChar?: string;
   frame: number;
-  glowWidth?: number;
+  /** Width of the head's glow, in columns. Defaults to roughly cols / 6. */
+  headWidth?: number;
 }): string {
-  const { cols, color, char, frame, glowWidth } = options;
+  const { cols, color, frame, headWidth } = options;
+  const trackChar = options.trackChar ?? '─';
+  const headChar = options.headChar ?? '█';
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const glow = Math.max(16, glowWidth ?? Math.floor(width / 1.1));
-  // The glow travels on a circle of circumference `width`: as its leading
-  // edge slides off the right side it is simultaneously entering from the
-  // left, so the loop is seamless with no gap between passes.
+  const head = Math.max(6, headWidth ?? Math.floor(width / 6));
+  // The head travels on a circle of circumference `width`: as it slides off
+  // the right edge it's simultaneously entering from the left, so the loop
+  // is seamless with no gap between passes.
   const center = frame % width;
-  const sigma = glow / 3;
+  const sigma = head / 3;
 
-  const brightnessAt = (i: number): number => {
+  const glowAt = (i: number): number => {
     const direct = Math.abs(i - center);
     const offset = Math.min(direct, width - direct); // circular distance
-    const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
-    return DIM_BRIGHTNESS + (1 - DIM_BRIGHTNESS) * gaussian;
+    return Math.exp(-(offset * offset) / (2 * sigma * sigma));
   };
 
-  const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
+  // Each position is either plain track (dim, trackChar) or part of the
+  // head (headChar, brightness tapering from the threshold up to full at
+  // the center) — merged into runs of (char, brightness bucket) so we emit
+  // one ANSI color code per run instead of per character.
+  const render = (i: number): { char: string; bucket: number } => {
+    const g = glowAt(i);
+    if (g < HEAD_THRESHOLD) {
+      return { char: trackChar, bucket: Math.round(TRACK_BRIGHTNESS * BRIGHTNESS_LEVELS) };
+    }
+    const brightness = TRACK_BRIGHTNESS + (1 - TRACK_BRIGHTNESS) * g;
+    return { char: headChar, bucket: Math.round(brightness * BRIGHTNESS_LEVELS) };
+  };
 
   let out = '';
   let runStart = 0;
-  let runBucket = bucketOf(0);
+  let run = render(0);
 
   for (let i = 1; i < width; i++) {
-    const b = bucketOf(i);
-    if (b !== runBucket) {
-      out += paint(color, char.repeat(i - runStart), runBucket / BRIGHTNESS_LEVELS);
+    const next = render(i);
+    if (next.char !== run.char || next.bucket !== run.bucket) {
+      out += paint(color, run.char.repeat(i - runStart), run.bucket / BRIGHTNESS_LEVELS);
       runStart = i;
-      runBucket = b;
+      run = next;
     }
   }
-  out += paint(color, char.repeat(width - runStart), runBucket / BRIGHTNESS_LEVELS);
+  out += paint(color, run.char.repeat(width - runStart), run.bucket / BRIGHTNESS_LEVELS);
 
   return out;
 }

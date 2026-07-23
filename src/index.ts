@@ -30,8 +30,12 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A chalk color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** Character the bar is drawn with. Defaults to "─". */
-  char?: string;
+  /** Character used for the constant background track. Defaults to "─". */
+  trackChar?: string;
+  /** Character used for the moving bright "comet" head. Defaults to "█". */
+  headChar?: string;
+  /** Width of the head's glow, in columns. Defaults to roughly cols / 6. */
+  headWidth?: number;
   /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
   /** How many columns the glow travels per frame. Higher = faster. Defaults to 2. */
@@ -55,7 +59,9 @@ export interface StatusBorderOptions {
  */
 export class StatusBorder {
   private readonly stream: NodeJS.WriteStream;
-  private readonly char: string;
+  private readonly trackChar: string;
+  private readonly headChar: string;
+  private readonly headWidth: number | undefined;
   private readonly fps: number;
   private readonly speed: number;
   private color: BorderColor;
@@ -69,7 +75,9 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '─';
+    this.trackChar = options.trackChar ?? '─';
+    this.headChar = options.headChar ?? '█';
+    this.headWidth = options.headWidth;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
   }
@@ -84,12 +92,21 @@ export class StatusBorder {
 
   private drawGlow(): void {
     const cols = this.stream.columns ?? 80;
-    this.write(buildFrame({ cols, color: this.color, char: this.char, frame: this.frame }));
+    this.write(
+      buildFrame({
+        cols,
+        color: this.color,
+        trackChar: this.trackChar,
+        headChar: this.headChar,
+        headWidth: this.headWidth,
+        frame: this.frame,
+      })
+    );
   }
 
   private drawSolid(): void {
     const cols = this.stream.columns ?? 80;
-    this.write(buildSolidFrame({ cols, color: this.color, char: this.char }));
+    this.write(buildSolidFrame({ cols, color: this.color, char: this.headChar }));
   }
 
   /** Change the bar's color while it's running, without stopping the animation. */
