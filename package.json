@@ -13,8 +13,12 @@
       "require": "./dist/index.cjs"
     }
   },
+  "bin": {
+    "cli-status-border": "./bin/cli.js"
+  },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "sideEffects": false,
   "license": "MIT",

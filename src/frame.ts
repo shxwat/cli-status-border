@@ -21,7 +21,7 @@ type RGB = [number, number, number];
 
 const NAMED_RGB: Record<Exclude<BorderColor, `#${string}`>, RGB> = {
   red: [255, 60, 60],
-  green: [60, 220, 90],
+  green: [0, 255, 65], // neon "hacker" green
   yellow: [230, 220, 60],
   blue: [80, 140, 255],
   magenta: [230, 70, 220],
@@ -79,12 +79,15 @@ export function buildFrame(options: {
   if (width === 0) return '';
 
   const glow = Math.max(16, glowWidth ?? Math.floor(width / 1.1));
-  const period = width + glow;
-  const center = frame % period; // the glow's center can travel slightly off either edge
+  // The glow travels on a circle of circumference `width`: as its leading
+  // edge slides off the right side it is simultaneously entering from the
+  // left, so the loop is seamless with no gap between passes.
+  const center = frame % width;
   const sigma = glow / 3;
 
   const brightnessAt = (i: number): number => {
-    const offset = i - center;
+    const direct = Math.abs(i - center);
+    const offset = Math.min(direct, width - direct); // circular distance
     const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
     return DIM_BRIGHTNESS + (1 - DIM_BRIGHTNESS) * gaussian;
   };

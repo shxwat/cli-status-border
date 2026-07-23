@@ -35,7 +35,7 @@ border.setColor('#ff8800');
 ```ts
 new StatusBorder({
   color: 'green',  // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: '─',       // character the bar is drawn with
+  char: '▀',       // character the bar is drawn with (default is a thick half-block)
   fps: 30,         // glow redraw rate
   speed: 4,        // columns the glow travels per frame
   stream: process.stdout,
@@ -50,6 +50,16 @@ new StatusBorder({
 - No-ops safely when stdout isn't an interactive TTY (piped output, CI logs, etc.) — safe to leave enabled unconditionally in any CLI tool.
 - Uses a terminal scroll region (`DECSTBM`) to reserve row 1 for the bar, so it doesn't fight with your program's own `console.log` output.
 
+## Pick a color interactively
+
+Installing the package also gives you a small CLI to preview every color before picking one in code:
+
+```sh
+npx cli-status-border
+```
+
+Use ↑/↓ to move, Enter to preview a color live in your terminal, Ctrl+C to quit. It prints the exact snippet to use once you've decided.
+
 ## Try it
 
 ```sh
@@ -57,6 +67,7 @@ git clone https://github.com/shxwat/cli-status-border
 cd cli-status-border
 npm install && npm run build
 node examples/demo.js magenta
+node bin/cli.js   # interactive color picker
 ```
 
 ## License

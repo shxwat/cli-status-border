@@ -30,7 +30,7 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A chalk color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** Character the bar is drawn with. Defaults to "─". */
+  /** Character the bar is drawn with. Defaults to "▀" (thick half-block). */
   char?: string;
   /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
@@ -69,7 +69,7 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '─';
+    this.char = options.char ?? '▀';
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
   }

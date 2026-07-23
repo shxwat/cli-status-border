@@ -38,11 +38,9 @@ describe('buildFrame', () => {
     expect(frameA).not.toBe(frameB);
   });
 
-  it('wraps the glow around continuously', () => {
-    const glow = Math.max(16, Math.floor(40 / 1.1));
-    const period = 40 + glow;
+  it('wraps the glow around continuously (period = width, seamless loop)', () => {
     const frameA = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 });
-    const frameB = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 + period });
+    const frameB = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 + 40 });
     expect(frameA).toBe(frameB);
   });
 
