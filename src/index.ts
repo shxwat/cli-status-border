@@ -47,9 +47,11 @@ export interface StatusBorderOptions {
  * pulse continuously slides across a thin underlined line for as long as
  * start() has been called and stop() hasn't — mirroring the process's own
  * running state. succeed()/fail() stop the animation and hold a solid
- * color, but the bar stays up until stop() is called explicitly. The rest
- * of the terminal (below row 1) keeps scrolling normally with your
- * program's own console.log output, so it doesn't get in the way.
+ * color, but the bar stays up until stop() is called explicitly — call
+ * pulse() to resume animating in a new color for repeated busy/settled
+ * cycles (e.g. a long-lived daemon driven by shell hooks). The rest of the
+ * terminal (below row 1) keeps scrolling normally with your program's own
+ * console.log output, so it doesn't get in the way.
  *
  * No-ops safely when stdout isn't an interactive TTY (e.g. piped to a file,
  * or in CI), so it's safe to leave enabled unconditionally.
@@ -65,7 +67,7 @@ export class StatusBorder {
   private frame = 0;
   private active = false;
   private rows = 0;
-  private readonly onResize = () => this.drawGlow();
+  private readonly onResize = () => (this.timer ? this.drawGlow() : this.drawSolid());
   private readonly onExit = () => this.stop();
   private readonly onSigint = () => {
     this.stop();
@@ -101,9 +103,19 @@ export class StatusBorder {
     this.write(buildSolidFrame({ cols, color: this.color, char: this.char }));
   }
 
-  /** Change the bar's color while it's running, without stopping the animation. */
+  /** Change the bar's color in place, without affecting whether it's animating. */
   setColor(color: BorderColor): void {
     this.color = color;
+    if (this.active && !this.timer) this.drawSolid();
+  }
+
+  private startTimer(): void {
+    if (this.timer) return;
+    this.drawGlow();
+    this.timer = setInterval(() => {
+      this.frame += this.speed;
+      this.drawGlow();
+    }, 1000 / this.fps);
   }
 
   /** Start pinning the bar to the top row and animating the pulse. */
@@ -120,11 +132,7 @@ export class StatusBorder {
     this.stream.write(setScrollRegion(2, this.rows));
     this.stream.write(CLEAR_TO_END_OF_SCREEN);
     this.stream.write(HIDE_CURSOR);
-    this.drawGlow();
-    this.timer = setInterval(() => {
-      this.frame += this.speed;
-      this.drawGlow();
-    }, 1000 / this.fps);
+    this.startTimer();
     this.stream.on('resize', this.onResize);
     // Safety net for a plain process.exit()/normal completion without an
     // explicit stop().
@@ -134,6 +142,18 @@ export class StatusBorder {
     // clean up and exit ourselves instead.
     process.on('SIGINT', this.onSigint);
     return this;
+  }
+
+  /**
+   * Resume the pulse animation in `color` — the counterpart to succeed()/
+   * fail(), for cycling a long-lived bar between "busy" and "settled"
+   * states repeatedly (e.g. driven by shell preexec/precmd hooks) without
+   * ever calling stop() in between.
+   */
+  pulse(color: BorderColor): void {
+    if (!this.active) return;
+    this.color = color;
+    this.startTimer();
   }
 
   /** Stop animating and show a solid bar in `color`. Stays up until stop() is called. */

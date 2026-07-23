@@ -14,11 +14,13 @@
     }
   },
   "bin": {
-    "cli-status-border": "./bin/cli.js"
+    "cli-status-border": "bin/cli.js",
+    "cli-status-border-daemon": "bin/daemon.js"
   },
   "files": [
     "dist",
-    "bin"
+    "bin",
+    "shell"
   ],
   "sideEffects": false,
   "license": "MIT",

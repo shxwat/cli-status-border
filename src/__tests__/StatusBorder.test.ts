@@ -127,6 +127,27 @@ describe('StatusBorder', () => {
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(true);
   });
 
+  it('pulse() resumes animating after succeed()/fail(), for repeated busy/settled cycles', () => {
+    const stream = createMockStream({ fps: 10 });
+    const border = new StatusBorder({ stream, fps: 10 });
+    border.start();
+    border.succeed(); // stops the timer
+
+    const callsAfterSucceed = writes(stream).length;
+    vi.advanceTimersByTime(1000);
+    expect(writes(stream).length).toBe(callsAfterSucceed); // confirmed stopped
+
+    border.pulse('yellow'); // should resume animating
+    const callsAfterPulse = writes(stream).length;
+    vi.advanceTimersByTime(300);
+    expect(writes(stream).length).toBeGreaterThan(callsAfterPulse);
+
+    border.fail(); // stops again, cycle repeats
+    const callsAfterFail = writes(stream).length;
+    vi.advanceTimersByTime(1000);
+    expect(writes(stream).length).toBe(callsAfterFail);
+  });
+
   it('registers exit and SIGINT safety nets on start, and removes them on stop', () => {
     const processOnSpy = vi.spyOn(process, 'on');
     const processRemoveSpy = vi.spyOn(process, 'removeListener');

@@ -31,6 +31,30 @@ You can also change the color while it's animating:
 border.setColor('#ff8800');
 ```
 
+To cycle a long-lived bar between "busy" and "settled" repeatedly without ever calling `stop()` in between, use `pulse()` — the counterpart to `succeed()`/`fail()` that resumes the animation:
+
+```js
+border.pulse('yellow'); // resume animating in a new color
+```
+
+## Shell-wide mode (any command, not just Node.js)
+
+Everything above requires a Node.js program to explicitly call the API. If you want the bar to react to **every command run in a terminal — Python, git, bash, anything** — there's a separate daemon + shell hook setup for that.
+
+1. Start the daemon once per terminal (it holds the bar open and reads a small state file):
+   ```sh
+   npx cli-status-border-daemon &
+   ```
+2. Source the shell integration so every command drives it:
+   ```sh
+   # add to ~/.zshrc
+   source "$(npm root -g)/cli-status-border/shell/init.zsh"
+   # or ~/.bashrc
+   source "$(npm root -g)/cli-status-border/shell/init.bash"
+   ```
+
+This hooks your shell's `preexec`/`precmd` (zsh) or the `DEBUG` trap + `PROMPT_COMMAND` (bash): the bar pulses yellow while a command runs, then settles to solid green (exit code 0) or red (non-zero) once it finishes — for any command, regardless of what language or tool it is.
+
 ## Options
 
 ```ts
@@ -70,6 +94,7 @@ npm install && npm run build
 node examples/demo.js magenta
 node examples/long-demo.js green
 node bin/cli.js   # interactive color picker
+node bin/daemon.js &   # shell-wide daemon (see "Shell-wide mode" above)
 ```
 
 ## License
