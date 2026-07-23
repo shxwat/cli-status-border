@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildSolidFrame } from '../frame';
+import { buildFrame, buildSolidFrame } from '../frame';
 
 const TAG_PATTERN = /\{[^}]*\}/g;
 
@@ -24,14 +24,35 @@ describe('buildSolidFrame', () => {
     expect(stripTags(frame)).toBe('='.repeat(10));
     expect(frame).toContain('{#ff8800-fg}');
   });
+});
 
-  it('defaults are underlined spaces — no visible glyph, just the underline', () => {
-    const frame = buildSolidFrame({ cols: 20, color: 'green', char: ' ' });
+describe('buildFrame', () => {
+  it('defaults to underlined spaces — no visible glyph, just the underline', () => {
+    const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
     expect(stripTags(frame)).toBe(' '.repeat(20));
     expect(frame).toContain('{underline}');
   });
 
+  it('uses the exact same character for the entire width — never a block glyph', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
+    const plain = stripTags(frame);
+    expect(plain).toBe('#'.repeat(40));
+    expect(plain).not.toMatch(/[█▓▒░]/);
+  });
+
+  it('moves the pulse as the frame number increases', () => {
+    const frameA = buildFrame({ cols: 40, color: 'red', frame: 0 });
+    const frameB = buildFrame({ cols: 40, color: 'red', frame: 10 });
+    expect(frameA).not.toBe(frameB);
+  });
+
+  it('wraps the pulse around continuously (period = width, seamless loop)', () => {
+    const frameA = buildFrame({ cols: 40, color: 'red', frame: 3 });
+    const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + 40 });
+    expect(frameA).toBe(frameB);
+  });
+
   it('handles zero width without throwing', () => {
-    expect(() => buildSolidFrame({ cols: 0, color: 'green', char: ' ' })).not.toThrow();
+    expect(() => buildFrame({ cols: 0, color: 'green', frame: 0 })).not.toThrow();
   });
 });
