@@ -1,3 +1,13 @@
+import { Chalk } from 'chalk';
+
+// A dedicated instance with color forced on: this module always renders for
+// a real terminal (the caller gates on stream.isTTY before using it), so we
+// don't want chalk's own environment auto-detection silently stripping
+// color codes (e.g. under a test runner or a piped stdout). Level 3 = true
+// 24-bit color, so gradients stay smooth instead of snapping to a coarse
+// palette.
+const chalk = new Chalk({ level: 3 });
+
 export type BorderColor =
   | 'red'
   | 'green'
@@ -39,20 +49,15 @@ function scale(rgb: RGB, factor: number): RGB {
   return rgb.map((c) => Math.round(Math.max(0, Math.min(255, c * factor)))) as RGB;
 }
 
-function toHex([r, g, b]: RGB): string {
-  const h = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${h(r)}${h(g)}${h(b)}`;
-}
-
 /**
- * Wraps `text` in a blessed underline + color tag at the given brightness
+ * Renders `text` underlined in true 24-bit `color` at the given brightness
  * (0-1). Terminals render an underline in the text's foreground color by
  * default, so an underlined run of spaces becomes a colored 1px line with
  * no visible glyph — no block or line-drawing character involved at all.
  */
 export function paint(color: BorderColor, text: string, brightness = 1): string {
-  const hex = toHex(scale(baseRgb(color), brightness));
-  return `{underline}{${hex}-fg}${text}{/}{/underline}`;
+  const [r, g, b] = scale(baseRgb(color), brightness);
+  return chalk.rgb(r, g, b).underline(text);
 }
 
 /** Builds a solid, uniform bar: a single underlined line spanning the full width in `color`. */
@@ -63,15 +68,15 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
 }
 
 const DIM_BRIGHTNESS = 0.04;
-const BRIGHTNESS_LEVELS = 12;
+const BRIGHTNESS_LEVELS = 64;
 
 /**
  * Builds one animation frame: a full-width underline under `char` (spaces
  * by default — no visible glyph, just the underline decoration itself as a
  * literal 1px line). The moving "comet" effect comes entirely from the
- * underline's color: nearly invisible everywhere except a bright pulse
- * that fades smoothly at both edges (a color gradient, not a shape
- * change) as it slides across, wrapping seamlessly.
+ * underline's true-color brightness: nearly invisible everywhere except a
+ * bright pulse that fades smoothly at both edges (a color gradient, not a
+ * shape change) as it slides across, wrapping seamlessly.
  */
 export function buildFrame(options: {
   cols: number;
@@ -79,7 +84,7 @@ export function buildFrame(options: {
   /** The character underlined to form the line. Defaults to ' ' (a space — no visible glyph, just the underline). */
   char?: string;
   frame: number;
-  /** Width of the bright pulse's glow, in columns. Defaults to roughly cols / 8 (a narrow pulse). */
+  /** Width of the bright pulse's glow, in columns. Defaults to roughly cols * 0.85 (a wide pulse). */
   pulseWidth?: number;
 }): string {
   const { cols, color, frame, pulseWidth } = options;
@@ -92,7 +97,7 @@ export function buildFrame(options: {
   // off the right edge it's simultaneously entering from the left, so the
   // loop is seamless with no gap or jump between passes.
   const center = frame % width;
-  const sigma = pulse / 5; // smaller divisor = sharper/thinner falloff on both sides
+  const sigma = pulse / 5;
 
   const brightnessAt = (i: number): number => {
     const direct = Math.abs(i - center);
@@ -104,7 +109,7 @@ export function buildFrame(options: {
   const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
 
   // Same character everywhere — only the color (via brightness) changes.
-  // Runs of equal brightness are merged so we emit one color tag per run
+  // Runs of equal brightness are merged so we emit one color code per run
   // instead of per character.
   let out = '';
   let runStart = 0;

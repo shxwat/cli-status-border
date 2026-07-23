@@ -2,40 +2,41 @@ import { describe, expect, it } from 'vitest';
 
 import { buildFrame, buildSolidFrame } from '../frame';
 
-const TAG_PATTERN = /\{[^}]*\}/g;
+// eslint-disable-next-line no-control-regex
+const ANSI_PATTERN = /\x1b\[[0-9;]*m/g;
 
-function stripTags(s: string): string {
-  return s.replace(TAG_PATTERN, '');
+function stripAnsi(s: string): string {
+  return s.replace(ANSI_PATTERN, '');
 }
 
 describe('buildSolidFrame', () => {
   it('produces a bar of the requested width', () => {
     const frame = buildSolidFrame({ cols: 20, color: 'green', char: '-' });
-    expect(stripTags(frame)).toBe('-'.repeat(20));
+    expect(stripAnsi(frame)).toBe('-'.repeat(20));
   });
 
-  it('wraps the text in a blessed underline + color tag', () => {
+  it('colorizes and underlines the bar (output differs from plain text)', () => {
     const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#' });
-    expect(frame).toMatch(/^\{underline\}\{#[0-9a-f]{6}-fg\}#{10}\{\/\}\{\/underline\}$/);
+    expect(frame).not.toBe('#'.repeat(10));
+    expect(frame).toContain('\x1b[4m'); // underline SGR code
   });
 
   it('supports hex colors', () => {
     const frame = buildSolidFrame({ cols: 10, color: '#ff8800', char: '=' });
-    expect(stripTags(frame)).toBe('='.repeat(10));
-    expect(frame).toContain('{#ff8800-fg}');
+    expect(stripAnsi(frame)).toBe('='.repeat(10));
   });
 });
 
 describe('buildFrame', () => {
   it('defaults to underlined spaces — no visible glyph, just the underline', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripTags(frame)).toBe(' '.repeat(20));
-    expect(frame).toContain('{underline}');
+    expect(stripAnsi(frame)).toBe(' '.repeat(20));
+    expect(frame).toContain('\x1b[4m');
   });
 
   it('uses the exact same character for the entire width — never a block glyph', () => {
     const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
-    const plain = stripTags(frame);
+    const plain = stripAnsi(frame);
     expect(plain).toBe('#'.repeat(40));
     expect(plain).not.toMatch(/[█▓▒░]/);
   });

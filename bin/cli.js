@@ -34,18 +34,18 @@ function render() {
 function preview(color) {
   const border = new StatusBorder({ color });
   activeBorder = border;
-  border.start();
-  border.log(`Previewing "${color}" — Ctrl+C to quit.`);
-  border.log('');
-  border.log('Use it in your tool:');
-  border.log(`  import { StatusBorder } from 'cli-status-border';`);
-  border.log(`  const border = new StatusBorder({ color: '${color}' });`);
-  border.log(`  border.start();`);
 
+  console.log(`Previewing "${color}" — Ctrl+C to quit.\n`);
+  console.log('Use it in your tool:\n');
+  console.log(`  import { StatusBorder } from 'cli-status-border';`);
+  console.log(`  const border = new StatusBorder({ color: '${color}' });`);
+  console.log(`  border.start();\n`);
+
+  border.start();
   let i = 0;
   setInterval(() => {
     i++;
-    border.log(`still running... ${i}s`);
+    console.log(`still running... ${i}s`);
   }, 1000);
 }
 
