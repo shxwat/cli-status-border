@@ -67,7 +67,7 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const DIM_BRIGHTNESS = 0.04;
+const DIM_BRIGHTNESS = 0.28;
 const BRIGHTNESS_LEVELS = 64;
 
 /**
