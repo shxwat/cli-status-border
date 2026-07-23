@@ -72,14 +72,14 @@ const BRIGHTNESS_LEVELS = 12;
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  /** The single character the whole line is drawn with. Defaults to '━'. */
+  /** The single character the whole line is drawn with. Defaults to '▔' (upper one-eighth block). */
   char?: string;
   frame: number;
   /** Width of the bright pulse's glow, in columns. Defaults to roughly cols / 6. */
   pulseWidth?: number;
 }): string {
   const { cols, color, frame, pulseWidth } = options;
-  const char = options.char ?? '━';
+  const char = options.char ?? '▔';
   const width = Math.max(0, cols);
   if (width === 0) return '';
 

@@ -35,7 +35,7 @@ border.setColor('#ff8800');
 ```ts
 new StatusBorder({
   color: 'green',     // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: '━',          // the single character the whole line is drawn with
+  char: '▔',          // the single character the whole line is drawn with (default sits flush against the top of the row, gapless)
   pulseWidth: 10,     // width of the moving pulse's glow, in columns (default ~cols / 6)
   fps: 30,            // redraw rate
   speed: 4,           // columns the pulse travels per frame
