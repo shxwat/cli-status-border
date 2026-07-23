@@ -25,10 +25,11 @@ describe('StatusBorder', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    // start() registers a real process.on('exit', ...) safety net; tests
-    // that don't explicitly call stop() would otherwise leak listeners
-    // across the suite.
+    // start() registers real process listeners ('exit', 'SIGINT') as
+    // safety nets; tests that don't explicitly call stop() would otherwise
+    // leak them across the suite.
     process.removeAllListeners('exit');
+    process.removeAllListeners('SIGINT');
   });
 
   it('does nothing when the stream is not a TTY', () => {
@@ -126,7 +127,7 @@ describe('StatusBorder', () => {
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(true);
   });
 
-  it('registers a process exit safety net on start, and removes it on stop', () => {
+  it('registers exit and SIGINT safety nets on start, and removes them on stop', () => {
     const processOnSpy = vi.spyOn(process, 'on');
     const processRemoveSpy = vi.spyOn(process, 'removeListener');
     const stream = createMockStream();
@@ -134,12 +135,29 @@ describe('StatusBorder', () => {
 
     border.start();
     expect(processOnSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+    expect(processOnSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
 
     border.stop();
     expect(processRemoveSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+    expect(processRemoveSpy).toHaveBeenCalledWith('SIGINT', expect.any(Function));
 
     processOnSpy.mockRestore();
     processRemoveSpy.mockRestore();
+  });
+
+  it('SIGINT handler cleans up the terminal and exits', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+    border.start();
+    const sigintHandler = (process.listeners('SIGINT') as Array<() => void>).at(-1)!;
+    sigintHandler();
+
+    expect(writes(stream).some((c) => c.includes('[r'))).toBe(true); // scroll region reset
+    expect(exitSpy).toHaveBeenCalledWith(130);
+
+    exitSpy.mockRestore();
   });
 
   it('is safe to call stop() before start()', () => {

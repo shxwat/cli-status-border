@@ -34,9 +34,9 @@ export interface StatusBorderOptions {
   char?: string;
   /** Width of the moving pulse's glow, in columns. Defaults to roughly cols * 0.85 (a wide pulse). */
   pulseWidth?: number;
-  /** Animation redraw rate in frames per second. Defaults to 30. */
+  /** Animation redraw rate in frames per second. Defaults to 40. */
   fps?: number;
-  /** How many columns the pulse travels per frame. Higher = faster. Defaults to 4. */
+  /** How many columns the pulse travels per frame. Higher = faster. Defaults to 6. */
   speed?: number;
   /** Output stream. Defaults to process.stdout. */
   stream?: NodeJS.WriteStream;
@@ -67,14 +67,18 @@ export class StatusBorder {
   private rows = 0;
   private readonly onResize = () => this.drawGlow();
   private readonly onExit = () => this.stop();
+  private readonly onSigint = () => {
+    this.stop();
+    process.exit(130);
+  };
 
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
     this.char = options.char ?? ' ';
     this.pulseWidth = options.pulseWidth;
-    this.fps = options.fps ?? 30;
-    this.speed = options.speed ?? 4;
+    this.fps = options.fps ?? 40;
+    this.speed = options.speed ?? 6;
   }
 
   private get supported(): boolean {
@@ -122,11 +126,13 @@ export class StatusBorder {
       this.drawGlow();
     }, 1000 / this.fps);
     this.stream.on('resize', this.onResize);
-    // Safety net: if the process exits (normally, via Ctrl+C, or because
-    // the terminal was closed) without an explicit stop(), still restore
-    // the terminal instead of leaving it with a permanently reserved row
-    // and a hidden cursor.
+    // Safety net for a plain process.exit()/normal completion without an
+    // explicit stop().
     process.on('exit', this.onExit);
+    // Ctrl+C needs its own handler: relying on the 'exit' event alone isn't
+    // reliable for a SIGINT with no other listener registered — explicitly
+    // clean up and exit ourselves instead.
+    process.on('SIGINT', this.onSigint);
     return this;
   }
 
@@ -157,6 +163,7 @@ export class StatusBorder {
     this.timer = null;
     this.stream.removeListener('resize', this.onResize);
     process.removeListener('exit', this.onExit);
+    process.removeListener('SIGINT', this.onSigint);
     this.stream.write(resetScrollRegion());
     // Explicitly target row 1 to clear it — the cursor could be anywhere
     // (wherever the consumer's own output last left it), and clearing
