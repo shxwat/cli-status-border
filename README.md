@@ -35,7 +35,7 @@ border.setColor('#ff8800');
 ```ts
 new StatusBorder({
   color: 'green',  // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: '▀',       // character the bar is drawn with (default is a thick half-block)
+  char: '─',       // character the bar is drawn with
   fps: 30,         // glow redraw rate
   speed: 4,        // columns the glow travels per frame
   stream: process.stdout,
