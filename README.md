@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal: a continuous thin track spans the full width, and a brighter, thicker "comet" head slides across it while a task is running. It settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
+An animated status bar pinned to the top row of the terminal: a single, uniform thin line spans the full width — the same character throughout, never a block glyph — and a bright "comet" pulse slides across it purely through color, fading into a dim base as it moves. It settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
 
 The rest of your program's output keeps scrolling normally below row 1, so the bar never gets in the way of your own logs.
 
@@ -34,12 +34,11 @@ border.setColor('#ff8800');
 
 ```ts
 new StatusBorder({
-  color: 'green',    // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  trackChar: '─',    // constant background line
-  headChar: '█',     // the moving bright "comet" head
-  headWidth: 10,     // width of the head's glow, in columns (default ~cols / 6)
-  fps: 30,           // redraw rate
-  speed: 4,          // columns the head travels per frame
+  color: 'green',     // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
+  char: '━',          // the single character the whole line is drawn with
+  pulseWidth: 10,     // width of the moving pulse's glow, in columns (default ~cols / 6)
+  fps: 30,            // redraw rate
+  speed: 4,           // columns the pulse travels per frame
   stream: process.stdout,
 });
 ```

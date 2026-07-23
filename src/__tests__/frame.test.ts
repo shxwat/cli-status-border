@@ -27,32 +27,20 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('produces a bar of the requested width', () => {
-    const frame = buildFrame({ cols: 40, color: 'cyan', frame: 5 });
-    expect(stripAnsi(frame)).toHaveLength(40);
-  });
-
-  it('renders the track char far from the head, and the head char near it', () => {
-    const frame = buildFrame({
-      cols: 40,
-      color: 'green',
-      trackChar: '-',
-      headChar: '#',
-      headWidth: 6,
-      frame: 20, // head centered at column 20
-    });
+  it('uses the exact same character for the entire width — never a block glyph', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
     const plain = stripAnsi(frame);
-    expect(plain[0]).toBe('-'); // far from the head -> plain track
-    expect(plain[20]).toBe('#'); // dead center of the head
+    expect(plain).toBe('#'.repeat(40));
+    expect(plain).not.toMatch(/[█▓▒░]/);
   });
 
-  it('moves the head as the frame number increases', () => {
+  it('moves the pulse as the frame number increases', () => {
     const frameA = buildFrame({ cols: 40, color: 'red', frame: 0 });
     const frameB = buildFrame({ cols: 40, color: 'red', frame: 10 });
     expect(frameA).not.toBe(frameB);
   });
 
-  it('wraps the head around continuously (period = width, seamless loop)', () => {
+  it('wraps the pulse around continuously (period = width, seamless loop)', () => {
     const frameA = buildFrame({ cols: 40, color: 'red', frame: 3 });
     const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + 40 });
     expect(frameA).toBe(frameB);

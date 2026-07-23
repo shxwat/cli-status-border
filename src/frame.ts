@@ -59,71 +59,62 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const TRACK_BRIGHTNESS = 0.18;
-const HEAD_THRESHOLD = 0.06; // below this gaussian contribution, render as plain track
-const BRIGHTNESS_LEVELS = 10;
+const DIM_BRIGHTNESS = 0.15;
+const BRIGHTNESS_LEVELS = 12;
 
 /**
- * Builds one animation frame: a continuous thin `trackChar` line spans the
- * full width at low brightness, and a brighter, thicker `headChar` pulse —
- * like a comet with a fading tail — slides across it as `frame` increases.
+ * Builds one animation frame: a single thin `char` spans the full terminal
+ * width, uniformly — the same character everywhere, never a block glyph.
+ * The moving "comet" effect comes entirely from per-character color: dim
+ * everywhere except a brighter region that fades smoothly (a color
+ * gradient, not a shape change) as it slides across, wrapping seamlessly.
  */
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  /** Character used for the constant background track. Defaults to '─'. */
-  trackChar?: string;
-  /** Character used for the moving bright head. Defaults to '█'. */
-  headChar?: string;
+  /** The single character the whole line is drawn with. Defaults to '━'. */
+  char?: string;
   frame: number;
-  /** Width of the head's glow, in columns. Defaults to roughly cols / 6. */
-  headWidth?: number;
+  /** Width of the bright pulse's glow, in columns. Defaults to roughly cols / 6. */
+  pulseWidth?: number;
 }): string {
-  const { cols, color, frame, headWidth } = options;
-  const trackChar = options.trackChar ?? '─';
-  const headChar = options.headChar ?? '█';
+  const { cols, color, frame, pulseWidth } = options;
+  const char = options.char ?? '━';
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const head = Math.max(6, headWidth ?? Math.floor(width / 6));
-  // The head travels on a circle of circumference `width`: as it slides off
-  // the right edge it's simultaneously entering from the left, so the loop
-  // is seamless with no gap between passes.
+  const pulse = Math.max(6, pulseWidth ?? Math.floor(width / 6));
+  // The pulse travels on a circle of circumference `width`: as it slides
+  // off the right edge it's simultaneously entering from the left, so the
+  // loop is seamless with no gap or jump between passes.
   const center = frame % width;
-  const sigma = head / 3;
+  const sigma = pulse / 3;
 
-  const glowAt = (i: number): number => {
+  const brightnessAt = (i: number): number => {
     const direct = Math.abs(i - center);
     const offset = Math.min(direct, width - direct); // circular distance
-    return Math.exp(-(offset * offset) / (2 * sigma * sigma));
+    const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
+    return DIM_BRIGHTNESS + (1 - DIM_BRIGHTNESS) * gaussian;
   };
 
-  // Each position is either plain track (dim, trackChar) or part of the
-  // head (headChar, brightness tapering from the threshold up to full at
-  // the center) — merged into runs of (char, brightness bucket) so we emit
-  // one ANSI color code per run instead of per character.
-  const render = (i: number): { char: string; bucket: number } => {
-    const g = glowAt(i);
-    if (g < HEAD_THRESHOLD) {
-      return { char: trackChar, bucket: Math.round(TRACK_BRIGHTNESS * BRIGHTNESS_LEVELS) };
-    }
-    const brightness = TRACK_BRIGHTNESS + (1 - TRACK_BRIGHTNESS) * g;
-    return { char: headChar, bucket: Math.round(brightness * BRIGHTNESS_LEVELS) };
-  };
+  const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
 
+  // Same character everywhere — only the color (via brightness) changes.
+  // Runs of equal brightness are merged so we emit one ANSI color code per
+  // run instead of per character.
   let out = '';
   let runStart = 0;
-  let run = render(0);
+  let runBucket = bucketOf(0);
 
   for (let i = 1; i < width; i++) {
-    const next = render(i);
-    if (next.char !== run.char || next.bucket !== run.bucket) {
-      out += paint(color, run.char.repeat(i - runStart), run.bucket / BRIGHTNESS_LEVELS);
+    const b = bucketOf(i);
+    if (b !== runBucket) {
+      out += paint(color, char.repeat(i - runStart), runBucket / BRIGHTNESS_LEVELS);
       runStart = i;
-      run = next;
+      runBucket = b;
     }
   }
-  out += paint(color, run.char.repeat(width - runStart), run.bucket / BRIGHTNESS_LEVELS);
+  out += paint(color, char.repeat(width - runStart), runBucket / BRIGHTNESS_LEVELS);
 
   return out;
 }
