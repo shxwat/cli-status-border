@@ -30,7 +30,7 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The character underlined to form the line. Defaults to "_" — its own glyph sits right against the underline, making the line read slightly thicker. */
+  /** The character underlined to form the line. Defaults to " " (a space — no visible glyph, just a literal colored underline). */
   char?: string;
   /** Width of the moving pulse's glow, in columns. Defaults to roughly cols * 0.85 (a wide pulse). */
   pulseWidth?: number;
@@ -71,7 +71,7 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '_';
+    this.char = options.char ?? ' ';
     this.pulseWidth = options.pulseWidth;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;

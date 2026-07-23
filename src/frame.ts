@@ -81,14 +81,14 @@ const BRIGHTNESS_LEVELS = 64;
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  /** The character underlined to form the line. Defaults to '_' — its own glyph sits right against the underline, making the line read slightly thicker. */
+  /** The character underlined to form the line. Defaults to ' ' (a space — no visible glyph, just the underline). */
   char?: string;
   frame: number;
   /** Width of the bright pulse's glow, in columns. Defaults to roughly cols * 0.85 (a wide pulse). */
   pulseWidth?: number;
 }): string {
   const { cols, color, frame, pulseWidth } = options;
-  const char = options.char ?? '_';
+  const char = options.char ?? ' ';
   const width = Math.max(0, cols);
   if (width === 0) return '';
 

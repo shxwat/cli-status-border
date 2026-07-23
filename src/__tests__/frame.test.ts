@@ -28,9 +28,9 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to underlined underscores for a slightly thicker line', () => {
+  it('defaults to underlined spaces — no visible glyph, just the underline', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe('_'.repeat(20));
+    expect(stripAnsi(frame)).toBe(' '.repeat(20));
     expect(frame).toContain('\x1b[4m');
   });
 
