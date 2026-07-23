@@ -5,11 +5,17 @@ import { StatusBorder } from '../index';
 function createMockStream(overrides: Partial<NodeJS.WriteStream> = {}) {
   return {
     write: vi.fn(),
+    on: vi.fn(),
+    removeListener: vi.fn(),
     isTTY: true,
     columns: 40,
     rows: 20,
     ...overrides,
   } as unknown as NodeJS.WriteStream;
+}
+
+function writes(stream: NodeJS.WriteStream): string[] {
+  return (stream.write as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
 }
 
 describe('StatusBorder', () => {
@@ -33,21 +39,30 @@ describe('StatusBorder', () => {
     const border = new StatusBorder({ stream });
     border.start();
 
-    const calls = (stream.write as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    const calls = writes(stream);
     expect(calls.some((c) => c.includes('[2;20r'))).toBe(true);
     expect(calls.some((c) => c.includes('[?25l'))).toBe(true);
   });
 
-  it('animates on an interval while active', () => {
+  it('draws a solid bar without forcing the cursor to an absolute row', () => {
     const stream = createMockStream();
-    const border = new StatusBorder({ stream, fps: 10 });
+    const border = new StatusBorder({ stream });
     border.start();
-    const callsBefore = (stream.write as ReturnType<typeof vi.fn>).mock.calls.length;
 
-    vi.advanceTimersByTime(300); // ~3 frames at 10fps
+    const calls = writes(stream);
+    expect(calls.some((c) => c.includes('[2;1H'))).toBe(false);
+  });
 
-    const callsAfter = (stream.write as ReturnType<typeof vi.fn>).mock.calls.length;
-    expect(callsAfter).toBeGreaterThan(callsBefore);
+  it('listens for resize and redraws', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+    expect(stream.on).toHaveBeenCalledWith('resize', expect.any(Function));
+
+    const callsBefore = writes(stream).length;
+    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    resizeHandler();
+    expect(writes(stream).length).toBeGreaterThan(callsBefore);
   });
 
   it('resets the scroll region and shows the cursor on stop', () => {
@@ -56,21 +71,10 @@ describe('StatusBorder', () => {
     border.start();
     border.stop();
 
-    const calls = (stream.write as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    const calls = writes(stream);
     expect(calls.some((c) => c.includes('[r'))).toBe(true);
     expect(calls.some((c) => c.includes('[?25h'))).toBe(true);
-  });
-
-  it('stops animating once stopped', () => {
-    const stream = createMockStream();
-    const border = new StatusBorder({ stream });
-    border.start();
-    border.stop();
-    const callsAtStop = (stream.write as ReturnType<typeof vi.fn>).mock.calls.length;
-
-    vi.advanceTimersByTime(1000);
-
-    expect((stream.write as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callsAtStop);
+    expect(stream.removeListener).toHaveBeenCalledWith('resize', expect.any(Function));
   });
 
   it('succeed() settles to a solid bar and releases the row after the hold time', () => {
@@ -80,13 +84,20 @@ describe('StatusBorder', () => {
     border.succeed(200);
 
     // still active immediately after succeed() (holding the solid color)
-    let calls = (stream.write as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
-    expect(calls.some((c) => c.includes('[r'))).toBe(false);
+    expect(writes(stream).some((c) => c.includes('[r'))).toBe(false);
 
     vi.advanceTimersByTime(200);
 
-    calls = (stream.write as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
-    expect(calls.some((c) => c.includes('[r'))).toBe(true);
+    expect(writes(stream).some((c) => c.includes('[r'))).toBe(true);
+  });
+
+  it('setColor() redraws immediately while active', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+    const callsBefore = writes(stream).length;
+    border.setColor('magenta');
+    expect(writes(stream).length).toBeGreaterThan(callsBefore);
   });
 
   it('is safe to call stop() before start()', () => {
@@ -100,10 +111,8 @@ describe('StatusBorder', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });
     border.start();
-    const callsAfterFirstStart = (stream.write as ReturnType<typeof vi.fn>).mock.calls.length;
+    const callsAfterFirstStart = writes(stream).length;
     border.start();
-    expect((stream.write as ReturnType<typeof vi.fn>).mock.calls.length).toBe(
-      callsAfterFirstStart
-    );
+    expect(writes(stream).length).toBe(callsAfterFirstStart);
   });
 });

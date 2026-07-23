@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal — it pulses while a task runs, and settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
+A solid status bar pinned to the top row of the terminal for as long as a task is running, and settles into a different solid color when you call `succeed()` or `fail()`. Any color, not just green.
 
 The rest of your program's output keeps scrolling normally below row 1, so the bar never gets in the way of your own logs.
 
@@ -35,7 +35,6 @@ border.setColor('#ff8800');
 new StatusBorder({
   color: 'green',  // chalk color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
   char: '─',       // character the bar is drawn with
-  fps: 12,         // animation speed
   stream: process.stdout,
 });
 ```

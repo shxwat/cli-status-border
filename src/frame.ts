@@ -38,58 +38,17 @@ function baseChalk(color: BorderColor): ChalkInstance {
   return chalk.green;
 }
 
-export function paint(
-  color: BorderColor,
-  text: string,
-  emphasis: 'bright' | 'dim' = 'bright'
-): string {
-  const c = baseChalk(color);
-  return emphasis === 'dim' ? c.dim(text) : c.bold(text);
+export function paint(color: BorderColor, text: string): string {
+  return baseChalk(color).bold(text);
 }
 
-/**
- * Builds the visible content of one animation frame: a `cols`-wide bar made
- * of `char`, with a brighter segment sliding across a dim base when
- * `pulsing`, or a single solid bright bar otherwise.
- */
+/** Builds a solid, `cols`-wide bar made of `char` in the given color. */
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
   char: string;
-  frame: number;
-  pulsing: boolean;
 }): string {
-  const { cols, color, char, frame, pulsing } = options;
+  const { cols, color, char } = options;
   const width = Math.max(0, cols);
-
-  if (!pulsing) {
-    return paint(color, char.repeat(width), 'bright');
-  }
-
-  const segmentLength = Math.max(4, Math.floor(width / 6));
-  const period = width + segmentLength;
-  const pos = period === 0 ? 0 : frame % period;
-
-  let out = '';
-  let runStart = -1;
-  const flush = (end: number, bright: boolean) => {
-    if (runStart === -1) return;
-    out += paint(color, char.repeat(end - runStart), bright ? 'bright' : 'dim');
-  };
-
-  let currentBright: boolean | null = null;
-  for (let i = 0; i < width; i++) {
-    const bright = i >= pos - segmentLength && i < pos;
-    if (currentBright === null) {
-      runStart = i;
-      currentBright = bright;
-    } else if (bright !== currentBright) {
-      flush(i, currentBright);
-      runStart = i;
-      currentBright = bright;
-    }
-  }
-  flush(width, currentBright ?? false);
-
-  return out;
+  return paint(color, char.repeat(width));
 }

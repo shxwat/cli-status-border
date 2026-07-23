@@ -10,61 +10,31 @@ function stripAnsi(s: string): string {
 }
 
 describe('buildFrame', () => {
-  it('produces a solid bar of the requested width when not pulsing', () => {
-    const frame = buildFrame({
-      cols: 20,
-      color: 'green',
-      char: '-',
-      frame: 0,
-      pulsing: false,
-    });
+  it('produces a solid bar of the requested width', () => {
+    const frame = buildFrame({ cols: 20, color: 'green', char: '-' });
     expect(stripAnsi(frame)).toBe('-'.repeat(20));
   });
 
-  it('produces a bar of the requested width when pulsing', () => {
-    const frame = buildFrame({
-      cols: 40,
-      color: 'cyan',
-      char: '#',
-      frame: 5,
-      pulsing: true,
-    });
-    expect(stripAnsi(frame)).toBe('#'.repeat(40));
-  });
-
-  it('changes the bright segment position across frames', () => {
-    const frameA = buildFrame({
-      cols: 40,
-      color: 'red',
-      char: '#',
-      frame: 0,
-      pulsing: true,
-    });
-    const frameB = buildFrame({
-      cols: 40,
-      color: 'red',
-      char: '#',
-      frame: 10,
-      pulsing: true,
-    });
-    expect(frameA).not.toBe(frameB);
+  it('colorizes the bar (output differs from plain text)', () => {
+    const frame = buildFrame({ cols: 10, color: 'cyan', char: '#' });
+    expect(frame).not.toBe('#'.repeat(10));
+    expect(stripAnsi(frame)).toBe('#'.repeat(10));
   });
 
   it('supports hex colors', () => {
-    const frame = buildFrame({
-      cols: 10,
-      color: '#ff8800',
-      char: '=',
-      frame: 0,
-      pulsing: false,
-    });
+    const frame = buildFrame({ cols: 10, color: '#ff8800', char: '=' });
     expect(stripAnsi(frame)).toBe('='.repeat(10));
-    expect(frame).not.toBe('='.repeat(10)); // actually colorized, not plain text
+    expect(frame).not.toBe('='.repeat(10));
+  });
+
+  it('falls back to green for an unrecognized color name', () => {
+    // @ts-expect-error - intentionally passing an invalid color to check the fallback
+    const frame = buildFrame({ cols: 5, color: 'not-a-color', char: '-' });
+    expect(stripAnsi(frame)).toBe('-'.repeat(5));
   });
 
   it('handles zero width without throwing', () => {
-    expect(() =>
-      buildFrame({ cols: 0, color: 'green', char: '-', frame: 0, pulsing: true })
-    ).not.toThrow();
+    expect(() => buildFrame({ cols: 0, color: 'green', char: '-' })).not.toThrow();
+    expect(stripAnsi(buildFrame({ cols: 0, color: 'green', char: '-' }))).toBe('');
   });
 });
