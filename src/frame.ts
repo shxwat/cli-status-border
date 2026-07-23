@@ -78,7 +78,7 @@ export function buildFrame(options: {
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const glow = Math.max(8, glowWidth ?? Math.floor(width / 2.5));
+  const glow = Math.max(10, glowWidth ?? Math.floor(width / 1.6));
   const period = width + glow;
   const center = frame % period; // the glow's center can travel slightly off either edge
   const sigma = glow / 4;
