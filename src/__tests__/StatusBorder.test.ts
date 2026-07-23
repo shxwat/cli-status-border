@@ -99,6 +99,19 @@ describe('StatusBorder', () => {
     expect(stream.removeListener).toHaveBeenCalledWith('resize', expect.any(Function));
   });
 
+  it('clears row 1 specifically on stop, not just "the current line"', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+    border.stop();
+
+    const clearCall = writes(stream).find((c) => c.includes('[2K'));
+    expect(clearCall).toBeDefined();
+    // must move to row 1 before clearing, so the bar's leftover color
+    // doesn't survive stop() regardless of where the cursor currently is
+    expect(clearCall).toContain('[1;1H');
+  });
+
   it('succeed() stops animating and holds a solid bar until stop() is called', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });

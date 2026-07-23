@@ -153,7 +153,11 @@ export class StatusBorder {
     this.stream.removeListener('resize', this.onResize);
     process.removeListener('exit', this.onExit);
     this.stream.write(resetScrollRegion());
-    this.stream.write(CLEAR_LINE);
+    // Explicitly target row 1 to clear it — the cursor could be anywhere
+    // (wherever the consumer's own output last left it), and clearing
+    // "the current line" instead of row 1 left the bar's colored
+    // characters behind even after stopping.
+    this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_LINE}${RESTORE_CURSOR}`);
     this.stream.write(SHOW_CURSOR);
   }
 }
