@@ -67,7 +67,7 @@ export class StatusBorder {
     this.color = options.color ?? 'green';
     this.char = options.char ?? '─';
     this.fps = options.fps ?? 30;
-    this.speed = options.speed ?? 2;
+    this.speed = options.speed ?? 4;
   }
 
   private get supported(): boolean {
