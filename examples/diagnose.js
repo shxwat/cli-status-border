@@ -8,6 +8,7 @@ const ESC = '\x1b';
 process.stdout.write(`Terminal: rows=${process.stdout.rows} cols=${process.stdout.columns}\n`);
 process.stdout.write('\n'); // push existing content down by one line
 process.stdout.write(`${ESC}[2;${process.stdout.rows}r`); // reserve row 1
+process.stdout.write(`${ESC}[0J`); // clear stale content on the rows we're about to reuse
 
 let i = 0;
 const timer = setInterval(() => {
