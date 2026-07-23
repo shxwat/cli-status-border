@@ -7,7 +7,7 @@ export type { BorderColor };
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The single character the whole line is drawn with. Defaults to "▔" (upper one-eighth block — flush, gapless, pinned to the very top of the row). */
+  /** The character underlined to form the line. Defaults to " " (a space — no visible glyph, just a literal colored underline). */
   char?: string;
   /** Width of the moving pulse's glow, in columns. Defaults to roughly terminal-width / 6. */
   pulseWidth?: number;
@@ -47,7 +47,7 @@ export class StatusBorder {
 
   constructor(options: StatusBorderOptions = {}) {
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '▔';
+    this.char = options.char ?? ' ';
     this.pulseWidth = options.pulseWidth;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;

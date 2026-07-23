@@ -44,10 +44,15 @@ function toHex([r, g, b]: RGB): string {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
-/** Wraps `text` in a blessed color tag (`{#rrggbb-fg}...{/}`) at the given brightness (0-1). */
+/**
+ * Wraps `text` in a blessed underline + color tag at the given brightness
+ * (0-1). Terminals render an underline in the text's foreground color by
+ * default, so an underlined run of spaces becomes a colored 1px line with
+ * no visible glyph — no block or line-drawing character involved at all.
+ */
 export function paint(color: BorderColor, text: string, brightness = 1): string {
   const hex = toHex(scale(baseRgb(color), brightness));
-  return `{${hex}-fg}${text}{/}`;
+  return `{underline}{${hex}-fg}${text}{/}{/underline}`;
 }
 
 /** Builds a solid, full-brightness bar (used for the settled success/fail state). */
@@ -61,23 +66,24 @@ const DIM_BRIGHTNESS = 0.15;
 const BRIGHTNESS_LEVELS = 12;
 
 /**
- * Builds one animation frame: a single thin `char` spans the full terminal
- * width, uniformly — the same character everywhere, never a block glyph.
- * The moving "comet" effect comes entirely from per-character color: dim
- * everywhere except a brighter region that fades smoothly (a color
- * gradient, not a shape change) as it slides across, wrapping seamlessly.
+ * Builds one animation frame: a full-width underline under `char` (spaces
+ * by default — no visible glyph, just the underline decoration itself as a
+ * literal 1px line). The moving "comet" effect comes entirely from the
+ * underline's color: dim everywhere except a brighter region that fades
+ * smoothly (a color gradient, not a shape change) as it slides across,
+ * wrapping seamlessly.
  */
 export function buildFrame(options: {
   cols: number;
   color: BorderColor;
-  /** The single character the whole line is drawn with. Defaults to '▔'. */
+  /** The character underlined to form the line. Defaults to ' ' (a space — no visible glyph, just the underline). */
   char?: string;
   frame: number;
   /** Width of the bright pulse's glow, in columns. Defaults to roughly cols / 6. */
   pulseWidth?: number;
 }): string {
   const { cols, color, frame, pulseWidth } = options;
-  const char = options.char ?? '▔';
+  const char = options.char ?? ' ';
   const width = Math.max(0, cols);
   if (width === 0) return '';
 

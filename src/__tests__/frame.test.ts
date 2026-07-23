@@ -14,9 +14,9 @@ describe('buildSolidFrame', () => {
     expect(stripTags(frame)).toBe('-'.repeat(20));
   });
 
-  it('wraps the text in a blessed color tag', () => {
+  it('wraps the text in a blessed underline + color tag', () => {
     const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#' });
-    expect(frame).toMatch(/^\{#[0-9a-f]{6}-fg\}#{10}\{\/\}$/);
+    expect(frame).toMatch(/^\{underline\}\{#[0-9a-f]{6}-fg\}#{10}\{\/\}\{\/underline\}$/);
   });
 
   it('supports hex colors', () => {
@@ -27,6 +27,12 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
+  it('defaults to underlined spaces — no visible glyph, just the underline', () => {
+    const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
+    expect(stripTags(frame)).toBe(' '.repeat(20));
+    expect(frame).toContain('{underline}');
+  });
+
   it('uses the exact same character for the entire width — never a block glyph', () => {
     const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
     const plain = stripTags(frame);

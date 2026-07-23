@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal: a single, uniform thin line spans the full width — the same character throughout, never a block glyph — and a bright "comet" pulse slides across it purely through color, fading into a dim base as it moves. It settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
+An animated status bar pinned to the top row of the terminal: a literal 1px line — an ANSI underline under empty space, not a text or block character at all — spans the full width, and a bright "comet" pulse slides across it purely through color, fading into a dim base as it moves. It settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
 
 Built on [`blessed`](https://github.com/chjj/blessed) — a mature, battle-tested terminal UI library — instead of hand-rolled ANSI escape codes, so the layout stays correct across terminals instead of fighting scroll-region quirks.
 
@@ -38,7 +38,7 @@ border.setColor('#ff8800');
 ```ts
 new StatusBorder({
   color: 'green',     // color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: '▔',          // the single character the whole line is drawn with (default sits flush against the top of the row, gapless)
+  char: ' ',          // the character underlined to form the line (default is a space — no visible glyph, just the underline)
   pulseWidth: 10,     // width of the moving pulse's glow, in columns (default ~cols / 6)
   fps: 30,            // redraw rate
   speed: 4,           // columns the pulse travels per frame
