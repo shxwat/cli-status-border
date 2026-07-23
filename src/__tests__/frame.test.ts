@@ -39,8 +39,8 @@ describe('buildFrame', () => {
   });
 
   it('wraps the glow around continuously', () => {
-    const glowLength = Math.max(4, Math.floor(40 / 5));
-    const period = 40 + glowLength;
+    const glow = Math.max(6, Math.floor(40 / 4));
+    const period = 40 + glow;
     const frameA = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 });
     const frameB = buildFrame({ cols: 40, color: 'red', char: '#', frame: 3 + period });
     expect(frameA).toBe(frameB);

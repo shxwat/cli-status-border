@@ -32,8 +32,10 @@ export interface StatusBorderOptions {
   color?: BorderColor;
   /** Character the bar is drawn with. Defaults to "─". */
   char?: string;
-  /** Animation speed in frames per second. Defaults to 20. */
+  /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
+  /** How many columns the glow travels per frame. Higher = faster. Defaults to 2. */
+  speed?: number;
   /** Output stream. Defaults to process.stdout. */
   stream?: NodeJS.WriteStream;
 }
@@ -52,6 +54,7 @@ export class StatusBorder {
   private readonly stream: NodeJS.WriteStream;
   private readonly char: string;
   private readonly fps: number;
+  private readonly speed: number;
   private color: BorderColor;
   private timer: ReturnType<typeof setInterval> | null = null;
   private frame = 0;
@@ -63,7 +66,8 @@ export class StatusBorder {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
     this.char = options.char ?? '─';
-    this.fps = options.fps ?? 20;
+    this.fps = options.fps ?? 30;
+    this.speed = options.speed ?? 2;
   }
 
   private get supported(): boolean {
@@ -105,7 +109,7 @@ export class StatusBorder {
     this.stream.write(HIDE_CURSOR);
     this.drawGlow();
     this.timer = setInterval(() => {
-      this.frame++;
+      this.frame += this.speed;
       this.drawGlow();
     }, 1000 / this.fps);
     this.stream.on('resize', this.onResize);
