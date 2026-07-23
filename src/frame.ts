@@ -87,12 +87,12 @@ export function buildFrame(options: {
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const pulse = Math.max(4, pulseWidth ?? Math.floor(width / 8));
+  const pulse = Math.max(4, pulseWidth ?? Math.floor(width * 0.85));
   // The pulse travels on a circle of circumference `width`: as it slides
   // off the right edge it's simultaneously entering from the left, so the
   // loop is seamless with no gap or jump between passes.
   const center = frame % width;
-  const sigma = pulse / 4; // smaller divisor = sharper/thinner falloff on both sides
+  const sigma = pulse / 5; // smaller divisor = sharper/thinner falloff on both sides
 
   const brightnessAt = (i: number): number => {
     const direct = Math.abs(i - center);
