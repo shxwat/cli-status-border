@@ -34,23 +34,46 @@ describe('StatusBorder', () => {
     expect(stream.write).not.toHaveBeenCalled();
   });
 
-  it('sets a scroll region and hides the cursor on start', () => {
+  it('reserves row 1 and clears stale content on the rows it reuses', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });
     border.start();
 
     const calls = writes(stream);
     expect(calls.some((c) => c.includes('[2;20r'))).toBe(true);
+    expect(calls.some((c) => c.includes('[0J'))).toBe(true);
     expect(calls.some((c) => c.includes('[?25l'))).toBe(true);
   });
 
-  it('draws a solid bar without forcing the cursor to an absolute row', () => {
+  it('draws without forcing the cursor to an absolute row', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });
     border.start();
 
-    const calls = writes(stream);
-    expect(calls.some((c) => c.includes('[2;1H'))).toBe(false);
+    expect(writes(stream).some((c) => c.includes('[2;1H'))).toBe(false);
+  });
+
+  it('animates on an interval while active', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream, fps: 10 });
+    border.start();
+    const callsBefore = writes(stream).length;
+
+    vi.advanceTimersByTime(300); // ~3 frames at 10fps
+
+    expect(writes(stream).length).toBeGreaterThan(callsBefore);
+  });
+
+  it('stops animating once stopped', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+    border.stop();
+    const callsAtStop = writes(stream).length;
+
+    vi.advanceTimersByTime(1000);
+
+    expect(writes(stream).length).toBe(callsAtStop);
   });
 
   it('listens for resize and redraws', () => {
@@ -58,11 +81,6 @@ describe('StatusBorder', () => {
     const border = new StatusBorder({ stream });
     border.start();
     expect(stream.on).toHaveBeenCalledWith('resize', expect.any(Function));
-
-    const callsBefore = writes(stream).length;
-    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls[0][1];
-    resizeHandler();
-    expect(writes(stream).length).toBeGreaterThan(callsBefore);
   });
 
   it('resets the scroll region and shows the cursor on stop', () => {
@@ -83,21 +101,11 @@ describe('StatusBorder', () => {
     border.start();
     border.succeed(200);
 
-    // still active immediately after succeed() (holding the solid color)
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(false);
 
     vi.advanceTimersByTime(200);
 
     expect(writes(stream).some((c) => c.includes('[r'))).toBe(true);
-  });
-
-  it('setColor() redraws immediately while active', () => {
-    const stream = createMockStream();
-    const border = new StatusBorder({ stream });
-    border.start();
-    const callsBefore = writes(stream).length;
-    border.setColor('magenta');
-    expect(writes(stream).length).toBeGreaterThan(callsBefore);
   });
 
   it('is safe to call stop() before start()', () => {

@@ -1,4 +1,4 @@
-import { buildFrame, BorderColor } from './frame';
+import { buildFrame, buildSolidFrame, BorderColor } from './frame';
 
 export type { BorderColor };
 
@@ -13,6 +13,7 @@ const RESTORE_CURSOR = `${ESC}[u`;
 const HIDE_CURSOR = `${ESC}[?25l`;
 const SHOW_CURSOR = `${ESC}[?25h`;
 const CLEAR_LINE = `${ESC}[2K`;
+const CLEAR_TO_END_OF_SCREEN = `${ESC}[0J`;
 
 function moveTo(row: number, col: number): string {
   return `${ESC}[${row};${col}H`;
@@ -31,16 +32,18 @@ export interface StatusBorderOptions {
   color?: BorderColor;
   /** Character the bar is drawn with. Defaults to "─". */
   char?: string;
+  /** Animation speed in frames per second. Defaults to 20. */
+  fps?: number;
   /** Output stream. Defaults to process.stdout. */
   stream?: NodeJS.WriteStream;
 }
 
 /**
- * A solid status bar pinned to the top row of the terminal for as long as a
- * task is running, in whatever color you give it. Settles into a different
- * solid color when you call succeed()/fail(). The rest of the terminal
- * (below row 1) keeps scrolling normally, so it doesn't get in the way of
- * your program's own output.
+ * An animated status bar pinned to the top row of the terminal: a bright
+ * "glow" segment continuously slides across it while a task is running, in
+ * whatever color you give it. Settles into a solid color when you call
+ * succeed()/fail(). The rest of the terminal (below row 1) keeps scrolling
+ * normally, so it doesn't get in the way of your program's own output.
  *
  * No-ops safely when stdout isn't an interactive TTY (e.g. piped to a file,
  * or in CI), so it's safe to leave enabled unconditionally.
@@ -48,54 +51,74 @@ export interface StatusBorderOptions {
 export class StatusBorder {
   private readonly stream: NodeJS.WriteStream;
   private readonly char: string;
+  private readonly fps: number;
   private color: BorderColor;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private frame = 0;
   private active = false;
   private rows = 0;
-  private readonly onResize = () => this.draw();
+  private readonly onResize = () => this.drawGlow();
 
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
     this.char = options.char ?? '─';
+    this.fps = options.fps ?? 20;
   }
 
   private get supported(): boolean {
     return Boolean(this.stream.isTTY) && typeof this.stream.columns === 'number';
   }
 
-  private draw(): void {
-    const cols = this.stream.columns ?? 80;
-    const content = buildFrame({ cols, color: this.color, char: this.char });
+  private write(content: string): void {
     this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_LINE}${content}${RESTORE_CURSOR}`);
   }
 
-  /** Change the bar's color while it's showing. */
-  setColor(color: BorderColor): void {
-    this.color = color;
-    if (this.active) this.draw();
+  private drawGlow(): void {
+    const cols = this.stream.columns ?? 80;
+    this.write(buildFrame({ cols, color: this.color, char: this.char, frame: this.frame }));
   }
 
-  /** Start pinning a solid bar to the top row. */
+  private drawSolid(): void {
+    const cols = this.stream.columns ?? 80;
+    this.write(buildSolidFrame({ cols, color: this.color, char: this.char }));
+  }
+
+  /** Change the bar's color while it's running, without stopping the animation. */
+  setColor(color: BorderColor): void {
+    this.color = color;
+  }
+
+  /** Start pinning the bar to the top row and animating the glow. */
   start(): this {
     if (!this.supported || this.active) return this;
     this.active = true;
     this.rows = this.stream.rows ?? 24;
     // Push whatever is already on screen down by one line instead of
-    // guessing an absolute row to jump the cursor to — that guess is what
-    // caused new output to land on top of existing lines.
+    // guessing an absolute row to jump the cursor to, then clear the rows
+    // we're about to reuse — otherwise stale characters from whatever used
+    // to be on those rows (e.g. the shell prompt) can peek out from behind
+    // shorter new lines written on top of them.
     this.stream.write('\n');
     this.stream.write(setScrollRegion(2, this.rows));
+    this.stream.write(CLEAR_TO_END_OF_SCREEN);
     this.stream.write(HIDE_CURSOR);
-    this.draw();
+    this.drawGlow();
+    this.timer = setInterval(() => {
+      this.frame++;
+      this.drawGlow();
+    }, 1000 / this.fps);
     this.stream.on('resize', this.onResize);
     return this;
   }
 
-  /** Show a solid bar in `color` briefly, then release the reserved row. */
+  /** Stop animating, show a solid bar, and release the reserved row shortly after. */
   private settle(color: BorderColor, holdMs: number): void {
     if (!this.active) return;
     this.color = color;
-    this.draw();
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+    this.drawSolid();
     setTimeout(() => this.stop(), holdMs);
   }
 
@@ -109,10 +132,12 @@ export class StatusBorder {
     this.settle('red', holdMs);
   }
 
-  /** Immediately stop showing the bar and release the reserved top row. */
+  /** Immediately stop animating and release the reserved top row. */
   stop(): void {
     if (!this.active) return;
     this.active = false;
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
     this.stream.removeListener('resize', this.onResize);
     this.stream.write(resetScrollRegion());
     this.stream.write(CLEAR_LINE);
