@@ -1,6 +1,6 @@
 import blessed from 'blessed';
 
-import { buildFrame, buildSolidFrame, BorderColor } from './frame';
+import { buildSolidFrame, BorderColor } from './frame';
 
 export type { BorderColor };
 
@@ -9,19 +9,12 @@ export interface StatusBorderOptions {
   color?: BorderColor;
   /** The character underlined to form the line. Defaults to " " (a space — no visible glyph, just a literal colored underline). */
   char?: string;
-  /** Width of the moving pulse's glow, in columns. Defaults to roughly terminal-width / 6. */
-  pulseWidth?: number;
-  /** Animation redraw rate in frames per second. Defaults to 30. */
-  fps?: number;
-  /** How many columns the pulse travels per frame. Higher = faster. Defaults to 4. */
-  speed?: number;
 }
 
 /**
- * An animated status bar pinned to the top row of the terminal: a bright
- * pulse continuously slides across a thin line for as long as start() has
- * been called and stop() hasn't — mirroring the process's own running
- * state. succeed()/fail() stop the animation and hold a solid color, but
+ * A solid status bar pinned to the top row of the terminal for exactly as
+ * long as start() has been called and stop() hasn't — mirroring the
+ * process's own running state. succeed()/fail() switch it to green/red;
  * the bar stays up until stop() is called explicitly.
  *
  * Built on `blessed`, which owns the whole terminal screen while active —
@@ -33,50 +26,33 @@ export interface StatusBorderOptions {
  */
 export class StatusBorder {
   private readonly char: string;
-  private readonly pulseWidth: number | undefined;
-  private readonly fps: number;
-  private readonly speed: number;
   private color: BorderColor;
   private screen: blessed.Widgets.Screen | null = null;
   private bar: blessed.Widgets.BoxElement | null = null;
   private logBox: blessed.Widgets.Log | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private frame = 0;
   private active = false;
   private readonly onExit = () => this.stop();
 
   constructor(options: StatusBorderOptions = {}) {
     this.color = options.color ?? 'green';
     this.char = options.char ?? ' ';
-    this.pulseWidth = options.pulseWidth;
-    this.fps = options.fps ?? 30;
-    this.speed = options.speed ?? 4;
   }
 
   private get supported(): boolean {
     return Boolean(process.stdout.isTTY);
   }
 
-  private drawGlow(): void {
-    if (!this.bar || !this.screen) return;
-    const cols = (this.screen.width as number) || 80;
-    this.bar.setContent(
-      buildFrame({ cols, color: this.color, char: this.char, pulseWidth: this.pulseWidth, frame: this.frame })
-    );
-    this.screen.render();
-  }
-
-  private drawSolid(): void {
+  private draw(): void {
     if (!this.bar || !this.screen) return;
     const cols = (this.screen.width as number) || 80;
     this.bar.setContent(buildSolidFrame({ cols, color: this.color, char: this.char }));
     this.screen.render();
   }
 
-  /** Change the bar's color while it's running, without stopping the animation. */
+  /** Change the bar's color while it's showing. */
   setColor(color: BorderColor): void {
     this.color = color;
-    if (this.active && !this.timer) this.drawSolid();
+    if (this.active) this.draw();
   }
 
   /**
@@ -96,7 +72,7 @@ export class StatusBorder {
     }
   }
 
-  /** Take over the screen, pin the bar to the top row, and start animating the pulse. */
+  /** Take over the screen and pin a solid bar to the top row. */
   start(): this {
     if (!this.supported || this.active) return this;
     this.active = true;
@@ -120,41 +96,25 @@ export class StatusBorder {
       process.exit(0);
     });
 
-    this.drawGlow();
-    this.timer = setInterval(() => {
-      this.frame += this.speed;
-      this.drawGlow();
-    }, 1000 / this.fps);
-
+    this.draw();
     process.on('exit', this.onExit);
     return this;
   }
 
-  /** Stop animating and show a solid bar in `color`. Stays up until stop() is called. */
-  private settle(color: BorderColor): void {
-    if (!this.active) return;
-    this.color = color;
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    this.drawSolid();
-  }
-
-  /** Stop animating and show a solid green bar, until stop() is called. */
+  /** Show a solid green bar, until stop() is called. */
   succeed(): void {
-    this.settle('green');
+    this.setColor('green');
   }
 
-  /** Stop animating and show a solid red bar, until stop() is called. */
+  /** Show a solid red bar, until stop() is called. */
   fail(): void {
-    this.settle('red');
+    this.setColor('red');
   }
 
   /** Stop showing the bar and give the terminal back. */
   stop(): void {
     if (!this.active) return;
     this.active = false;
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
     process.removeListener('exit', this.onExit);
     this.screen?.destroy();
     this.screen = null;

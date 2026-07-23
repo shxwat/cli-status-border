@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal: a literal 1px line — an ANSI underline under empty space, not a text or block character at all — spans the full width, and a bright "comet" pulse slides across it purely through color, fading into a dim base as it moves. It settles into a solid color when you call `succeed()` or `fail()`. Any color, not just green.
+A solid status bar pinned to the top row of the terminal for exactly as long as your process is running: a literal 1px line — an ANSI underline under empty space, not a text or block character at all — spans the full width in whatever color you choose. Call `succeed()`/`fail()` to switch it to green/red.
 
 Built on [`blessed`](https://github.com/chjj/blessed) — a mature, battle-tested terminal UI library — instead of hand-rolled ANSI escape codes, so the layout stays correct across terminals instead of fighting scroll-region quirks.
 
@@ -22,12 +22,12 @@ const border = new StatusBorder({ color: 'cyan' });
 border.start();
 border.log('doing some work...');
 await doSomeWork();
-border.succeed(); // stops the pulse, holds a solid green bar
-// or: border.fail();  // holds a solid red bar
+border.succeed(); // switches the bar to solid green
+// or: border.fail();  // switches the bar to solid red
 border.stop(); // give the terminal back whenever you're ready
 ```
 
-You can also change the color while it's animating:
+You can also change the color at any time:
 
 ```js
 border.setColor('#ff8800');
@@ -37,18 +37,15 @@ border.setColor('#ff8800');
 
 ```ts
 new StatusBorder({
-  color: 'green',     // color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: ' ',          // the character underlined to form the line (default is a space — no visible glyph, just the underline)
-  pulseWidth: 10,     // width of the moving pulse's glow, in columns (default ~cols / 6)
-  fps: 30,            // redraw rate
-  speed: 4,           // columns the pulse travels per frame
+  color: 'green', // color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
+  char: ' ',      // the character underlined to form the line (default is a space — no visible glyph, just the underline)
 });
 ```
 
 ## Behavior notes
 
 - The bar stays up for exactly as long as your process is: it appears on `start()` and disappears on `stop()` — nothing releases it automatically.
-- `succeed()`/`fail()` stop the pulse animation and hold a solid color, but don't release the bar themselves; call `stop()` whenever you're ready to give the terminal back.
+- `succeed()`/`fail()` just switch the color; the bar keeps showing until you call `stop()`.
 - If your process exits (normally, via Ctrl+C, or the terminal closing) without calling `stop()`, a safety net still restores the terminal.
 - No-ops safely when stdout isn't an interactive TTY (piped output, CI logs, etc.) — safe to leave enabled unconditionally in any CLI tool.
 
