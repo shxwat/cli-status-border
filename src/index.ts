@@ -46,6 +46,8 @@ export interface StatusBorderOptions {
   dimBrightness?: number;
   /** Fraction (0-1) of the glow that's a flat full-brightness core. Defaults to 0.35. */
   plateauFraction?: number;
+  /** Fill each cell's background with color (perfectly smooth, one cell tall) vs coloring a thinner glyph (grainier). Defaults to true. */
+  fill?: boolean;
   /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
   /** How many columns the pulse travels per frame. Higher = faster. Defaults to 4. */
@@ -74,6 +76,7 @@ export class StatusBorder {
   private pulseWidth: number | undefined;
   private dimBrightness: number | undefined;
   private plateauFraction: number | undefined;
+  private readonly fill: boolean;
   private fps: number;
   private speed: number;
   private color: BorderColor;
@@ -122,6 +125,7 @@ export class StatusBorder {
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
     this.plateauFraction = options.plateauFraction;
+    this.fill = options.fill ?? true;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
   }
@@ -162,6 +166,7 @@ export class StatusBorder {
         pulseWidth: this.pulseWidth,
         dimBrightness: this.dimBrightness,
         plateauFraction: this.plateauFraction,
+        fill: this.fill,
         frame: this.frame,
       })
     );
@@ -169,7 +174,7 @@ export class StatusBorder {
 
   private drawSolid(): void {
     const cols = this.stream.columns ?? 80;
-    this.write(buildSolidFrame({ cols, color: this.color, char: this.char }));
+    this.write(buildSolidFrame({ cols, color: this.color, char: this.char, fill: this.fill }));
   }
 
   /** Change the bar's color in place, without affecting whether it's animating. */

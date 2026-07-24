@@ -10,33 +10,37 @@ function stripAnsi(s: string): string {
 }
 
 describe('buildSolidFrame', () => {
-  it('produces a bar of the requested width', () => {
+  it('fills the requested width (spaces in default fill mode)', () => {
     const frame = buildSolidFrame({ cols: 20, color: 'green', char: '-' });
+    expect(stripAnsi(frame)).toBe(' '.repeat(20));
+  });
+
+  it('uses the given glyph in foreground (non-fill) mode', () => {
+    const frame = buildSolidFrame({ cols: 20, color: 'green', char: '-', fill: false });
     expect(stripAnsi(frame)).toBe('-'.repeat(20));
   });
 
-  it('colorizes the bar (output differs from plain text)', () => {
-    const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#' });
-    expect(frame).not.toBe('#'.repeat(10));
+  it('applies a background color in fill mode', () => {
+    const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: ' ' });
+    expect(frame).toContain('\x1b[48;2;'); // 24-bit background SGR
   });
 
-  it('supports hex colors', () => {
-    const frame = buildSolidFrame({ cols: 10, color: '#ff8800', char: '=' });
-    expect(stripAnsi(frame)).toBe('='.repeat(10));
+  it('applies a foreground color in non-fill mode', () => {
+    const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#', fill: false });
+    expect(frame).toContain('\x1b[38;2;'); // 24-bit foreground SGR
   });
 });
 
 describe('buildFrame', () => {
-  it('defaults to the upper one-eighth block (solid, top-of-cell, renders crisp)', () => {
+  it('defaults to background-fill mode (spaces, background colored)', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe('▔'.repeat(20));
+    expect(stripAnsi(frame)).toBe(' '.repeat(20));
+    expect(frame).toContain('\x1b[48;2;');
   });
 
-  it('uses the exact same character for the entire width — never a block glyph', () => {
-    const frame = buildFrame({ cols: 40, color: 'green', char: '#', frame: 20 });
-    const plain = stripAnsi(frame);
-    expect(plain).toBe('#'.repeat(40));
-    expect(plain).not.toMatch(/[█▓▒░]/);
+  it('never emits block glyphs', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', frame: 20 });
+    expect(stripAnsi(frame)).not.toMatch(/[█▓▒░]/);
   });
 
   it('moves the pulse as the frame number increases', () => {

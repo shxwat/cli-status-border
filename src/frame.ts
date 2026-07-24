@@ -50,16 +50,30 @@ function scale(rgb: RGB, factor: number): RGB {
   return rgb.map((c) => Math.round(Math.max(0, Math.min(255, c * factor)))) as RGB;
 }
 
-export function paint(color: BorderColor, text: string, brightness = 1): string {
+/**
+ * Renders `text` in `color` at `brightness`. In `fill` mode the color is
+ * applied as the BACKGROUND of the cells — the whole cell becomes a solid
+ * block of color with zero antialiasing/grain (the smoothest a terminal can
+ * render), at the cost of being a full cell tall. In foreground mode the
+ * glyph itself is colored (thinner, but a colored glyph antialiases).
+ */
+export function paint(color: BorderColor, text: string, brightness = 1, fill = true): string {
   const [r, g, b] = scale(baseRgb(color), brightness);
-  return chalk.rgb(r, g, b)(text);
+  return fill ? chalk.bgRgb(r, g, b)(text) : chalk.rgb(r, g, b)(text);
 }
 
 /** Builds a solid, full-brightness bar (used for the settled success/fail state). */
-export function buildSolidFrame(options: { cols: number; color: BorderColor; char: string }): string {
+export function buildSolidFrame(options: {
+  cols: number;
+  color: BorderColor;
+  char: string;
+  fill?: boolean;
+}): string {
   const { cols, color, char } = options;
+  const fill = options.fill ?? true;
   const width = Math.max(0, cols);
-  return paint(color, char.repeat(width), 1);
+  const cell = fill ? ' ' : char;
+  return paint(color, cell.repeat(width), 1, fill);
 }
 
 const DIM_BRIGHTNESS = 0.22;
@@ -86,9 +100,12 @@ export function buildFrame(options: {
   dimBrightness?: number;
   /** Fraction (0-1) of the glow that's a flat full-brightness core. */
   plateauFraction?: number;
+  /** Fill the whole cell with background color (smoothest) vs coloring the glyph. Defaults to true. */
+  fill?: boolean;
 }): string {
   const { cols, color, frame } = options;
-  const char = options.char ?? '▔';
+  const fill = options.fill ?? true;
+  const char = fill ? ' ' : options.char ?? '▔';
   const glowWidth = options.glowWidth ?? options.pulseWidth;
   const dimBrightness = options.dimBrightness ?? DIM_BRIGHTNESS;
   const plateauFraction = options.plateauFraction ?? PLATEAU_FRACTION;
@@ -120,12 +137,12 @@ export function buildFrame(options: {
   for (let i = 1; i < width; i++) {
     const b = bucketOf(i);
     if (b !== runBucket) {
-      out += paint(color, char.repeat(i - runStart), runBucket / BRIGHTNESS_LEVELS);
+      out += paint(color, char.repeat(i - runStart), runBucket / BRIGHTNESS_LEVELS, fill);
       runStart = i;
       runBucket = b;
     }
   }
-  out += paint(color, char.repeat(width - runStart), runBucket / BRIGHTNESS_LEVELS);
+  out += paint(color, char.repeat(width - runStart), runBucket / BRIGHTNESS_LEVELS, fill);
 
   return out;
 }
