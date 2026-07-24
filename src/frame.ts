@@ -62,7 +62,7 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const DIM_BRIGHTNESS = 0.18;
+const DIM_BRIGHTNESS = 0.4;
 const BRIGHTNESS_LEVELS = 64;
 // Fraction of the glow that's a flat, full-brightness "core" (the plateau),
 // with the rest split evenly into straight linear ramps down to
