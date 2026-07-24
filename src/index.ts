@@ -32,11 +32,11 @@ export interface StatusBorderOptions {
   color?: BorderColor;
   /** The character underlined to form the line. Defaults to " " (a space — no visible glyph, just a literal colored underline). */
   char?: string;
-  /** Width of the moving pulse's glow, in columns. Defaults to roughly cols * 0.85 (a wide pulse). */
+  /** Width of the moving pulse's glow, in columns. Defaults to roughly cols / 1.8. */
   pulseWidth?: number;
-  /** Animation redraw rate in frames per second. Defaults to 40. */
+  /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
-  /** How many columns the pulse travels per frame. Higher = faster. Defaults to 6. */
+  /** How many columns the pulse travels per frame. Higher = faster. Defaults to 4. */
   speed?: number;
   /** Output stream. Defaults to process.stdout. */
   stream?: NodeJS.WriteStream;
@@ -77,6 +77,10 @@ export class StatusBorder {
     if (newRows !== this.rows) {
       this.rows = newRows;
       this.stream.write(setScrollRegion(2, this.rows));
+      // Resizing (especially shrinking) can re-expose rows that were only
+      // ever scrolled past, not actually cleared, under the old viewport
+      // size — wipe them so old content doesn't bleed back into view.
+      this.stream.write(CLEAR_TO_END_OF_SCREEN);
     }
     if (this.timer) this.drawGlow();
     else this.drawSolid();

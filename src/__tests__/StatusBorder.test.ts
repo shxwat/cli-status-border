@@ -103,6 +103,8 @@ describe('StatusBorder', () => {
 
     const newCalls = writes(stream).slice(callsBefore);
     expect(newCalls.some((c) => c.includes('[2;40r'))).toBe(true);
+    // also wipes potentially re-exposed stale rows
+    expect(newCalls.some((c) => c.includes('[0J'))).toBe(true);
   });
 
   it('does not re-issue the scroll region on resize when only columns changed', () => {
