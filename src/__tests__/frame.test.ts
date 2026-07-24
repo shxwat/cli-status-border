@@ -32,15 +32,16 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to background-fill mode (spaces, background colored)', () => {
+  it('defaults to a thin foreground upper-block line (▔, foreground colored)', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe(' '.repeat(20));
-    expect(frame).toContain('\x1b[48;2;');
+    expect(stripAnsi(frame)).toBe('▔'.repeat(20));
+    expect(frame).toContain('\x1b[38;2;');
   });
 
-  it('never emits block glyphs', () => {
-    const frame = buildFrame({ cols: 40, color: 'green', frame: 20 });
-    expect(stripAnsi(frame)).not.toMatch(/[█▓▒░]/);
+  it('can render a background fill when asked', () => {
+    const frame = buildFrame({ cols: 20, color: 'green', frame: 0, fill: true });
+    expect(stripAnsi(frame)).toBe(' '.repeat(20));
+    expect(frame).toContain('\x1b[48;2;');
   });
 
   it('moves the pulse as the frame number increases', () => {

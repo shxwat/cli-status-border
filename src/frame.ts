@@ -105,7 +105,9 @@ export function buildFrame(options: {
   fill?: boolean;
 }): string {
   const { cols, color, frame } = options;
-  const fill = options.fill ?? true;
+  // Default to foreground mode (no background fill) so the line is a thin
+  // '▔' upper block rather than a full-cell-tall solid fill.
+  const fill = options.fill ?? false;
   const char = fill ? ' ' : options.char ?? '▔';
   const glowWidth = options.glowWidth ?? options.pulseWidth;
   const dimBrightness = options.dimBrightness ?? DIM_BRIGHTNESS;
