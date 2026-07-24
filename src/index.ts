@@ -77,10 +77,10 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? ' ';
+    this.char = options.char ?? '─';
     this.pulseWidth = options.pulseWidth;
-    this.fps = options.fps ?? 40;
-    this.speed = options.speed ?? 6;
+    this.fps = options.fps ?? 30;
+    this.speed = options.speed ?? 4;
   }
 
   private get supported(): boolean {

@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal: a literal 1px line — a true 24-bit-color ANSI underline under empty space, not a text or block character at all — spans the full width, and a bright pulse slides smoothly across it purely through color while your process is running. Call `succeed()`/`fail()` to stop the animation and hold solid green/red.
+An animated status bar pinned to the top row of the terminal: a thin true-24-bit-color line spans the full width, and a bright pulse slides smoothly across it — thin and dim at its edges, full brightness at its center — while your process is running. Call `succeed()`/`fail()` to stop the animation and hold solid green/red.
 
 Uses a terminal scroll region (`DECSTBM`) to reserve row 1 for the bar, so your program's own `console.log` output keeps scrolling normally underneath it without any conflict.
 
@@ -60,7 +60,7 @@ This hooks your shell's `preexec`/`precmd` (zsh) or the `DEBUG` trap + `PROMPT_C
 ```ts
 new StatusBorder({
   color: 'green',   // color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: ' ',        // the character underlined to form the line (default is a space — no visible glyph, just the underline)
+  char: '─',        // the character the line is drawn with
   pulseWidth: 10,   // width of the moving pulse's glow, in columns (default ~cols * 0.85, a wide pulse)
   fps: 40,          // redraw rate
   speed: 6,         // columns the pulse travels per frame

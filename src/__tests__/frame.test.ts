@@ -15,10 +15,9 @@ describe('buildSolidFrame', () => {
     expect(stripAnsi(frame)).toBe('-'.repeat(20));
   });
 
-  it('colorizes and underlines the bar (output differs from plain text)', () => {
+  it('colorizes the bar (output differs from plain text)', () => {
     const frame = buildSolidFrame({ cols: 10, color: 'cyan', char: '#' });
     expect(frame).not.toBe('#'.repeat(10));
-    expect(frame).toContain('\x1b[4m'); // underline SGR code
   });
 
   it('supports hex colors', () => {
@@ -28,10 +27,9 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to underlined spaces — no visible glyph, just the underline', () => {
+  it('defaults to a thin dash character', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe(' '.repeat(20));
-    expect(frame).toContain('\x1b[4m');
+    expect(stripAnsi(frame)).toBe('─'.repeat(20));
   });
 
   it('uses the exact same character for the entire width — never a block glyph', () => {
@@ -47,9 +45,11 @@ describe('buildFrame', () => {
     expect(frameA).not.toBe(frameB);
   });
 
-  it('wraps the pulse around continuously (period = width, seamless loop)', () => {
+  it('wraps the pulse around continuously', () => {
+    const glow = Math.max(8, Math.floor(40 / 2.5));
+    const period = 40 + glow;
     const frameA = buildFrame({ cols: 40, color: 'red', frame: 3 });
-    const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + 40 });
+    const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + period });
     expect(frameA).toBe(frameB);
   });
 
