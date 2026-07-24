@@ -100,11 +100,36 @@ describe('StatusBorder', () => {
     (stream as unknown as { rows: number }).rows = 40; // simulate a taller terminal
     const callsBefore = writes(stream).length;
     resizeHandler();
+    vi.advanceTimersByTime(120); // resize resync is debounced
 
     const newCalls = writes(stream).slice(callsBefore);
     expect(newCalls.some((c) => c.includes('[2;40r'))).toBe(true);
     // also wipes potentially re-exposed stale rows
     expect(newCalls.some((c) => c.includes('[0J'))).toBe(true);
+  });
+
+  it('debounces rapid resize events (e.g. a window drag) into a single resync', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+
+    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => c[0] === 'resize'
+    )![1];
+
+    const callsBefore = writes(stream).length;
+    // simulate many resize events firing during a drag, at different sizes
+    for (let rows = 21; rows <= 30; rows++) {
+      (stream as unknown as { rows: number }).rows = rows;
+      resizeHandler();
+      vi.advanceTimersByTime(20); // faster than the 120ms debounce window
+    }
+    vi.advanceTimersByTime(120); // let it settle
+
+    const newCalls = writes(stream).slice(callsBefore);
+    const scrollRegionCalls = newCalls.filter((c) => /\x1b\[2;\d+r/.test(c));
+    expect(scrollRegionCalls).toHaveLength(1);
+    expect(scrollRegionCalls[0]).toContain('[2;30r'); // only the final size
   });
 
   it('does not re-issue the scroll region on resize when only columns changed', () => {
@@ -119,6 +144,7 @@ describe('StatusBorder', () => {
     (stream as unknown as { columns: number }).columns = 120; // width-only change
     const callsBefore = writes(stream).length;
     resizeHandler();
+    vi.advanceTimersByTime(120);
 
     const newCalls = writes(stream).slice(callsBefore);
     expect(newCalls.some((c) => /\x1b\[\d+;\d+r/.test(c))).toBe(false);

@@ -67,23 +67,31 @@ export class StatusBorder {
   private frame = 0;
   private active = false;
   private rows = 0;
+  private resizeSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly onResize = () => {
-    // The scroll region was pinned using the row count at start() time; if
-    // the terminal is resized (rows change, not just columns), that region
-    // goes stale relative to the actual screen, and the terminal's own
-    // reflow can scatter the bar into multiple broken fragments. Re-issue
-    // it with the current row count to keep it in sync.
-    const newRows = this.stream.rows ?? this.rows;
-    if (newRows !== this.rows) {
-      this.rows = newRows;
-      this.stream.write(setScrollRegion(2, this.rows));
-      // Resizing (especially shrinking) can re-expose rows that were only
-      // ever scrolled past, not actually cleared, under the old viewport
-      // size — wipe them so old content doesn't bleed back into view.
-      this.stream.write(CLEAR_TO_END_OF_SCREEN);
-    }
-    if (this.timer) this.drawGlow();
-    else this.drawSolid();
+    // Dragging a window's edge fires resize events continuously — dozens
+    // per second while the drag is in progress, not just once at the end.
+    // Doing a full scroll-region resync + screen clear on every single one
+    // of those is what produced a cascade of broken fragments. Debounce:
+    // only fully resync once resize events stop arriving for a moment.
+    if (this.resizeSettleTimer) clearTimeout(this.resizeSettleTimer);
+    this.resizeSettleTimer = setTimeout(() => {
+      this.resizeSettleTimer = null;
+      const newRows = this.stream.rows ?? this.rows;
+      if (newRows !== this.rows) {
+        this.rows = newRows;
+        this.stream.write(setScrollRegion(2, this.rows));
+        // Resizing (especially shrinking) can re-expose rows that were
+        // only ever scrolled past, not actually cleared, under the old
+        // viewport size. Explicitly home the cursor first — clearing
+        // "from the cursor" without doing so clears from wherever it
+        // happened to be left, which is what scattered the bar into
+        // fragments instead of cleanly wiping the whole screen.
+        this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_TO_END_OF_SCREEN}${RESTORE_CURSOR}`);
+      }
+      if (this.timer) this.drawGlow();
+      else this.drawSolid();
+    }, 120);
   };
   private readonly onExit = () => this.stop();
   private readonly onSigint = () => {
@@ -198,6 +206,8 @@ export class StatusBorder {
     this.active = false;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    if (this.resizeSettleTimer) clearTimeout(this.resizeSettleTimer);
+    this.resizeSettleTimer = null;
     this.stream.removeListener('resize', this.onResize);
     process.removeListener('exit', this.onExit);
     process.removeListener('SIGINT', this.onSigint);
