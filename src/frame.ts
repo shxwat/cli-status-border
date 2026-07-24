@@ -76,12 +76,13 @@ export function buildSolidFrame(options: {
   return paint(color, cell.repeat(width), 1, fill);
 }
 
-const DIM_BRIGHTNESS = 0.22;
+// Brightness raised so the edges don't look dead/faded.
+const DIM_BRIGHTNESS = 0.45;
 const BRIGHTNESS_LEVELS = 64;
 // Fraction of the glow that's a flat, full-brightness "core" (the plateau),
 // with the rest split evenly into straight linear ramps down to
 // DIM_BRIGHTNESS on either side — a true linear gradient, not a curve.
-const PLATEAU_FRACTION = 0.12;
+const PLATEAU_FRACTION = 0.25;
 
 /**
  * Builds one animation frame: a `cols`-wide bar made of `char`, with a
@@ -112,7 +113,9 @@ export function buildFrame(options: {
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const glow = Math.max(12, glowWidth ?? Math.floor(width / 1.3));
+  // width / 3 keeps the glow tight with sharper edges (width / 1.3 spread
+  // it too wide, making the whole line look faded).
+  const glow = Math.max(12, glowWidth ?? Math.floor(width / 3));
   // The glow travels on a circle of circumference `width`, so its bright
   // core is always visible somewhere on screen — no "off-screen dead zone"
   // where the whole line goes uniformly dim while it wraps around.
