@@ -14,6 +14,14 @@ const HIDE_CURSOR = `${ESC}[?25l`;
 const SHOW_CURSOR = `${ESC}[?25h`;
 const CLEAR_LINE = `${ESC}[2K`;
 const CLEAR_TO_END_OF_SCREEN = `${ESC}[0J`;
+// DECAWM (auto-wrap mode). We draw a full-width line on row 1 every frame;
+// with auto-wrap ON, writing the last column leaves the cursor in a
+// pending-wrap state, and if the reported column count is momentarily
+// stale during a live window-drag resize, the line overflows, wraps, and
+// scrolls — scattering the bar into fragments down the screen. Turning
+// auto-wrap off makes an over-long line simply clip at the edge instead.
+const DISABLE_AUTO_WRAP = `${ESC}[?7l`;
+const ENABLE_AUTO_WRAP = `${ESC}[?7h`;
 
 function moveTo(row: number, col: number): string {
   return `${ESC}[${row};${col}H`;
@@ -67,28 +75,30 @@ export class StatusBorder {
   private frame = 0;
   private active = false;
   private rows = 0;
+  private resizing = false;
   private resizeSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly onResize = () => {
     // Dragging a window's edge fires resize events continuously — dozens
     // per second while the drag is in progress, not just once at the end.
-    // Doing a full scroll-region resync + screen clear on every single one
-    // of those is what produced a cascade of broken fragments. Debounce:
-    // only fully resync once resize events stop arriving for a moment.
+    // Pause drawing entirely until the drag settles: writing to a terminal
+    // mid-reflow (with a momentarily stale column count) is what scattered
+    // the bar into a cascade of broken fragments. Debounce, then do one
+    // clean resync once resize events stop arriving.
+    this.resizing = true;
     if (this.resizeSettleTimer) clearTimeout(this.resizeSettleTimer);
     this.resizeSettleTimer = setTimeout(() => {
       this.resizeSettleTimer = null;
+      this.resizing = false;
       const newRows = this.stream.rows ?? this.rows;
       if (newRows !== this.rows) {
         this.rows = newRows;
         this.stream.write(setScrollRegion(2, this.rows));
-        // Resizing (especially shrinking) can re-expose rows that were
-        // only ever scrolled past, not actually cleared, under the old
-        // viewport size. Explicitly home the cursor first — clearing
-        // "from the cursor" without doing so clears from wherever it
-        // happened to be left, which is what scattered the bar into
-        // fragments instead of cleanly wiping the whole screen.
-        this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_TO_END_OF_SCREEN}${RESTORE_CURSOR}`);
       }
+      // Home the cursor before clearing — clearing "from the cursor"
+      // without doing so wipes from wherever it happened to be left, which
+      // is part of what scattered the bar into fragments instead of
+      // cleanly wiping the whole screen.
+      this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_TO_END_OF_SCREEN}${RESTORE_CURSOR}`);
       if (this.timer) this.drawGlow();
       else this.drawSolid();
     }, 120);
@@ -136,10 +146,11 @@ export class StatusBorder {
 
   private startTimer(): void {
     if (this.timer) return;
-    this.drawGlow();
+    if (!this.resizing) this.drawGlow();
     this.timer = setInterval(() => {
       this.frame += this.speed;
-      this.drawGlow();
+      // Don't draw mid-resize; the debounced settle will redraw cleanly.
+      if (!this.resizing) this.drawGlow();
     }, 1000 / this.fps);
   }
 
@@ -157,6 +168,7 @@ export class StatusBorder {
     this.stream.write(setScrollRegion(2, this.rows));
     this.stream.write(CLEAR_TO_END_OF_SCREEN);
     this.stream.write(HIDE_CURSOR);
+    this.stream.write(DISABLE_AUTO_WRAP);
     this.startTimer();
     this.stream.on('resize', this.onResize);
     // Safety net for a plain process.exit()/normal completion without an
@@ -212,6 +224,7 @@ export class StatusBorder {
     process.removeListener('exit', this.onExit);
     process.removeListener('SIGINT', this.onSigint);
     this.stream.write(resetScrollRegion());
+    this.stream.write(ENABLE_AUTO_WRAP);
     // Explicitly target row 1 to clear it — the cursor could be anywhere
     // (wherever the consumer's own output last left it), and clearing
     // "the current line" instead of row 1 left the bar's colored

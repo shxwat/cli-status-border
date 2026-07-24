@@ -50,6 +50,35 @@ describe('StatusBorder', () => {
     expect(calls.some((c) => c.includes('[?25l'))).toBe(true);
   });
 
+  it('disables auto-wrap on start and re-enables it on stop', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+    expect(writes(stream).some((c) => c.includes('[?7l'))).toBe(true);
+
+    const before = writes(stream).length;
+    border.stop();
+    expect(writes(stream).slice(before).some((c) => c.includes('[?7h'))).toBe(true);
+  });
+
+  it('pauses drawing while a resize is in progress, then redraws once it settles', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream, fps: 10 });
+    border.start();
+
+    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => c[0] === 'resize'
+    )![1];
+
+    resizeHandler(); // resize starts
+    const callsAtResizeStart = writes(stream).length;
+    vi.advanceTimersByTime(100); // animation ticks would fire here, but must be suppressed
+    expect(writes(stream).length).toBe(callsAtResizeStart);
+
+    vi.advanceTimersByTime(120); // debounce settles -> one clean redraw
+    expect(writes(stream).length).toBeGreaterThan(callsAtResizeStart);
+  });
+
   it('draws without forcing the cursor to an absolute row', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });
