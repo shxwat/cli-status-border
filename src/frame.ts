@@ -62,7 +62,7 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const DIM_BRIGHTNESS = 0.4;
+const DIM_BRIGHTNESS = 0.22;
 const BRIGHTNESS_LEVELS = 64;
 // Fraction of the glow that's a flat, full-brightness "core" (the plateau),
 // with the rest split evenly into straight linear ramps down to
@@ -84,7 +84,7 @@ export function buildFrame(options: {
   pulseWidth?: number;
 }): string {
   const { cols, color, frame } = options;
-  const char = options.char ?? '─';
+  const char = options.char ?? '▔';
   const glowWidth = options.glowWidth ?? options.pulseWidth;
   const width = Math.max(0, cols);
   if (width === 0) return '';

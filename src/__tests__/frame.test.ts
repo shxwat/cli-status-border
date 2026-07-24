@@ -27,9 +27,9 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to a thin dash character', () => {
+  it('defaults to the upper one-eighth block (solid, top-of-cell, renders crisp)', () => {
     const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe('─'.repeat(20));
+    expect(stripAnsi(frame)).toBe('▔'.repeat(20));
   });
 
   it('uses the exact same character for the entire width — never a block glyph', () => {
