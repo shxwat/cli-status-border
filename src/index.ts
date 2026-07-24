@@ -119,14 +119,13 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '▁';
+    this.char = options.char ?? '▄';
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
     this.plateauFraction = options.plateauFraction;
-    // Default to foreground mode with the lower one-eighth block (▁): a
-    // solid, ~1/8-cell-tall filled region sitting at the bottom of the
-    // row — a genuinely thin line (matching native UI bars) that's still a
-    // solid fill rather than an antialiased center stroke.
+    // Default to foreground mode with the lower half block (▄): a solid,
+    // half-cell-tall filled region at the bottom of the row — solid fill
+    // (smooth, no antialiased stroke) with a bit more thickness.
     this.fill = options.fill ?? false;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
