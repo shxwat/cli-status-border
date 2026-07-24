@@ -32,10 +32,26 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to a thin foreground upper-block line (▔, foreground colored)', () => {
-    const frame = buildFrame({ cols: 20, color: 'green', frame: 0 });
-    expect(stripAnsi(frame)).toBe('▔'.repeat(20));
-    expect(frame).toContain('\x1b[38;2;');
+  it('defaults to a constant-height thin foreground line (▂) — no taper', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', frame: 20 });
+    expect(stripAnsi(frame)).toBe('▂'.repeat(40));
+    expect(frame).toContain('\x1b[38;2;'); // 24-bit foreground SGR
+  });
+
+  it('draws a constant-height stroke with the given char', () => {
+    const frame = buildFrame({ cols: 20, color: 'green', frame: 0, char: '─' });
+    expect(stripAnsi(frame)).toBe('─'.repeat(20));
+  });
+
+  it('opt-in taper varies the line height by intensity (thin edges, fat middle)', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', frame: 20, taper: true });
+    const bare = stripAnsi(frame);
+    expect(bare).toHaveLength(40);
+    // Every cell is one of the bottom-aligned partial-block glyphs.
+    expect([...bare].every((c) => '▁▂▃▄▅▆▇█'.includes(c))).toBe(true);
+    // The middle (near the core at column 20) is taller than the far edges.
+    const heights = '▁▂▃▄▅▆▇█';
+    expect(heights.indexOf(bare[20])).toBeGreaterThan(heights.indexOf(bare[0]));
   });
 
   it('can render a background fill when asked', () => {

@@ -36,14 +36,18 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The character the line is drawn with. Defaults to "▔" (a solid, crisp, top-of-cell block). */
+  /** The character the line is drawn with. Defaults to "▂" (lower one-quarter block — a thin-but-visible line, universally supported). Pass "▔" for a thinner top-hugging line or "▀" for a thicker one. */
   char?: string;
-  /** Width of the moving pulse's glow, in columns. Defaults to roughly cols / 1.3. */
+  /** Width of the moving pulse's glow, in columns. Defaults to the full terminal width — spreading the gradient over every cell keeps adjacent cells' colors close, which is what makes it look smooth rather than banded. */
   pulseWidth?: number;
-  /** Brightness (0-1) of the dimmest part of the line. Lower = more contrast. Defaults to 0.22. */
+  /** Brightness (0-1) of the dimmest part of the line. Lower = more contrast. Defaults to 0.04 (the gradient runs down to near-black at its darkest point). */
   dimBrightness?: number;
-  /** Fraction (0-1) of the glow that's a flat full-brightness core. Defaults to 0.35. */
+  /** Fraction (0-1) of the glow that's a flat full-brightness core. Defaults to 0.33. */
   plateauFraction?: number;
+  /** How hard the core blooms toward white (0-1). Defaults to 0 (constant hue): washing toward white shifts all three channels at once, which shows up as visible per-cell banding at the core. */
+  bloom?: number;
+  /** Vary the line's height by intensity via ▁▂▃▄ blocks. Off by default — the height steps read as a staircase of boxes rather than a smooth taper. */
+  taper?: boolean;
   /** Fill each cell's background with color (perfectly smooth, one cell tall) vs coloring a thinner glyph (grainier). Defaults to true. */
   fill?: boolean;
   /** Animation redraw rate in frames per second. Defaults to 30. */
@@ -74,6 +78,8 @@ export class StatusBorder {
   private pulseWidth: number | undefined;
   private dimBrightness: number | undefined;
   private plateauFraction: number | undefined;
+  private bloom: number | undefined;
+  private taper: boolean;
   private readonly fill: boolean;
   private fps: number;
   private speed: number;
@@ -119,12 +125,22 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '▔';
+    // Lower one-quarter block: twice the thickness of the one-eighth '▔'
+    // while staying in the core Block Elements range every monospace font
+    // ships. (The top-aligned quarter block '🮂' would keep the line at the
+    // top edge of the row, but it's from Symbols for Legacy Computing and
+    // renders as tofu boxes in fonts that lack that block.)
+    this.char = options.char ?? '▂';
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
     this.plateauFraction = options.plateauFraction;
-    // Default to foreground mode with the upper one-eighth block (▔): a
-    // thin solid line at the top of the row, not a full-cell background fill.
+    this.bloom = options.bloom;
+    // Off by default: per-column height steps (▁▂▃▄) read as a staircase
+    // of boxes. The thin/thick impression comes from the brightness
+    // gradient at a constant height instead.
+    this.taper = options.taper ?? false;
+    // Default to foreground mode (a thin colored stroke) rather than a
+    // full-cell background fill.
     this.fill = options.fill ?? false;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
@@ -138,12 +154,14 @@ export class StatusBorder {
     pulseWidth?: number;
     dimBrightness?: number;
     plateauFraction?: number;
+    bloom?: number;
     speed?: number;
     char?: string;
   }): void {
     if (opts.pulseWidth !== undefined) this.pulseWidth = opts.pulseWidth;
     if (opts.dimBrightness !== undefined) this.dimBrightness = opts.dimBrightness;
     if (opts.plateauFraction !== undefined) this.plateauFraction = opts.plateauFraction;
+    if (opts.bloom !== undefined) this.bloom = opts.bloom;
     if (opts.speed !== undefined) this.speed = opts.speed;
     if (opts.char !== undefined) this.char = opts.char;
   }
@@ -153,7 +171,14 @@ export class StatusBorder {
   }
 
   private write(content: string): void {
-    this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${CLEAR_LINE}${content}${RESTORE_CURSOR}`);
+    // No CLEAR_LINE here on purpose. Erasing the whole row and *then*
+    // redrawing it leaves the line blank for the instant between the two —
+    // 30×/second that reads as a flicker (worse on GPU/block terminals like
+    // Warp, which don't optimize in-place cell rewrites). Every frame writes
+    // exactly `width` cells from column 1 with auto-wrap off, so it fully
+    // overwrites the previous frame with no gap: overwriting in place, never
+    // blanking, is what makes the motion flicker-free.
+    this.stream.write(`${SAVE_CURSOR}${moveTo(1, 1)}${content}${RESTORE_CURSOR}`);
   }
 
   private drawGlow(): void {
@@ -166,6 +191,8 @@ export class StatusBorder {
         pulseWidth: this.pulseWidth,
         dimBrightness: this.dimBrightness,
         plateauFraction: this.plateauFraction,
+        bloom: this.bloom,
+        taper: this.taper,
         fill: this.fill,
         frame: this.frame,
       })
@@ -203,11 +230,19 @@ export class StatusBorder {
     // we're about to reuse — otherwise stale characters from whatever used
     // to be on those rows (e.g. the shell prompt) can peek out from behind
     // shorter new lines written on top of them.
-    this.stream.write('\n');
-    this.stream.write(setScrollRegion(2, this.rows));
-    this.stream.write(CLEAR_TO_END_OF_SCREEN);
-    this.stream.write(HIDE_CURSOR);
-    this.stream.write(DISABLE_AUTO_WRAP);
+    // Emit the whole setup as ONE write. Splitting it into five separate
+    // stream.write() calls lets the terminal (and any concurrent shell-prompt
+    // output) interleave between them; on some terminals a sequence that gets
+    // interrupted mid-parse drops its ESC and prints the leftover '[' as a
+    // literal character at the edge of the row. One atomic write can't be
+    // torn apart that way.
+    this.stream.write(
+      '\n' +
+        setScrollRegion(2, this.rows) +
+        CLEAR_TO_END_OF_SCREEN +
+        HIDE_CURSOR +
+        DISABLE_AUTO_WRAP
+    );
     this.startTimer();
     this.stream.on('resize', this.onResize);
     // Safety net for a plain process.exit()/normal completion without an

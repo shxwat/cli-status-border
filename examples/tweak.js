@@ -8,15 +8,12 @@ import { StatusBorder } from '../dist/index.js';
 const cols = process.stdout.columns ?? 80;
 
 const state = {
-  pulseWidth: Math.floor(cols / 1.3),
-  dimBrightness: 0.22,
-  plateauFraction: 0.35,
+  pulseWidth: cols,
+  dimBrightness: 0.04,
+  plateauFraction: 0.33,
+  bloom: 0,
   speed: 4,
-  char: '▔',
 };
-
-const CHARS = ['▔', '─', '━', '▁', '█', '═'];
-let charIndex = 0;
 
 const border = new StatusBorder({ color: 'green', ...state });
 border.start();
@@ -31,11 +28,12 @@ function print() {
   // always visible while tuning.
   const line =
     `pulseWidth=${state.pulseWidth}  dimBrightness=${state.dimBrightness.toFixed(2)}  ` +
-    `plateauFraction=${state.plateauFraction.toFixed(2)}  speed=${state.speed}  char='${state.char}'`;
+    `plateauFraction=${state.plateauFraction.toFixed(2)}  bloom=${state.bloom.toFixed(2)}  ` +
+    `speed=${state.speed}`;
   process.stdout.write(`\x1b[3;1H\x1b[2K${line}`);
   process.stdout.write(
     `\x1b[5;1H\x1b[2K` +
-      `[←/→] width   [↑/↓] contrast(dim)   [+/-] core   [ [ / ] ] speed   [c] char   [p] print+quit`
+      `[←/→] length  [↑/↓] contrast(dim)  [+/-] core  [b/B] bloom  [ [ / ] ] speed  [p] print+quit`
   );
 }
 
@@ -68,21 +66,19 @@ process.stdin.on('keypress', (str, key) => {
   }
   if (str === '+' || str === '=') state.plateauFraction = Math.min(1, +(state.plateauFraction + 0.05).toFixed(2));
   if (str === '-' || str === '_') state.plateauFraction = Math.max(0, +(state.plateauFraction - 0.05).toFixed(2));
+  if (str === 'b') state.bloom = Math.min(1, +(state.bloom + 0.05).toFixed(2));
+  if (str === 'B') state.bloom = Math.max(0, +(state.bloom - 0.05).toFixed(2));
   if (str === ']') state.speed = Math.min(20, state.speed + 1);
   if (str === '[') state.speed = Math.max(1, state.speed - 1);
-  if (str === 'c') {
-    charIndex = (charIndex + 1) % CHARS.length;
-    state.char = CHARS[charIndex];
-  }
   if (str === 'p') {
     border.stop();
     console.log('\nLock these in:\n');
     console.log('new StatusBorder({');
     console.log(`  color: 'green',`);
-    console.log(`  char: '${state.char}',`);
     console.log(`  pulseWidth: ${state.pulseWidth},`);
     console.log(`  dimBrightness: ${state.dimBrightness},`);
     console.log(`  plateauFraction: ${state.plateauFraction},`);
+    console.log(`  bloom: ${state.bloom},`);
     console.log(`  speed: ${state.speed},`);
     console.log('});\n');
     process.exit(0);

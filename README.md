@@ -1,6 +1,6 @@
 # cli-status-border
 
-An animated status bar pinned to the top row of the terminal: a thin true-24-bit-color line spans the full width, and a bright pulse slides smoothly across it — thin and dim at its edges, full brightness at its center — while your process is running. Call `succeed()`/`fail()` to stop the animation and hold solid green/red.
+An animated status bar pinned to the top row of the terminal: a thin true-24-bit-color line spans the full width, with a wide band of light sliding smoothly across it — a flat full-brightness core with straight linear ramps fading to near-black on either side, at a constant hue — while your process is running. Call `succeed()`/`fail()` to stop the animation and hold solid green/red.
 
 Uses a terminal scroll region (`DECSTBM`) to reserve row 1 for the bar, so your program's own `console.log` output keeps scrolling normally underneath it without any conflict.
 
@@ -60,8 +60,15 @@ This hooks your shell's `preexec`/`precmd` (zsh) or the `DEBUG` trap + `PROMPT_C
 ```ts
 new StatusBorder({
   color: 'green',   // color name (red, green, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800"
-  char: '─',        // the character the line is drawn with
-  pulseWidth: 10,   // width of the moving pulse's glow, in columns (default ~cols * 0.85, a wide pulse)
+  pulseWidth: 10,   // length of the moving pulse's glow, in columns (default: the full terminal width)
+  dimBrightness: 0.04,   // brightness (0-1) of the dimmest, unlit part of the line (default fades to near-black)
+  plateauFraction: 0.33, // fraction of the glow that's a flat, full-intensity core
+  bloom: 0,         // how hard the core blooms toward white (0 = constant hue, 1 = white-hot);
+                    // off by default — the white shift reads as per-cell banding at the core
+  taper: false,     // opt-in: vary the line's height by intensity too (thin edges, fat middle) —
+                    // off by default because the per-column height steps (▁▂▃▄) read as boxes
+  char: '▂',        // the character the line is drawn with (lower one-quarter block;
+                    // try '▔' for a thinner top-hugging line or '▀' for a thicker one)
   fps: 40,          // redraw rate
   speed: 6,         // columns the pulse travels per frame
   stream: process.stdout,
