@@ -87,7 +87,7 @@ export function buildFrame(options: {
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const glow = Math.max(10, glowWidth ?? Math.floor(width / 1.8));
+  const glow = Math.max(12, glowWidth ?? Math.floor(width / 1.3));
   // The glow travels on a circle of circumference `width`, so its bright
   // peak is always visible somewhere on screen — no "off-screen dead zone"
   // where the whole line goes uniformly dim while the peak wraps around.
