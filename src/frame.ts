@@ -43,12 +43,9 @@ function baseRgb(color: BorderColor): RGB {
   return NAMED_RGB[color as Exclude<BorderColor, `#${string}`>] ?? NAMED_RGB.green;
 }
 
-// Pure brightness scaling toward black — no white blending. The peak stays
-// the actual named color (vibrant neon green, etc.) at full saturation
-// instead of washing out toward white, which read as "not proper green"
-// and made the color transition look torn/jagged rather than a clean glow.
-const HOT_CAP = 1;
-
+// Pure brightness scaling toward black — the peak stays the actual named
+// color (vibrant neon green, etc.) at full saturation, never washed out
+// toward white.
 function scale(rgb: RGB, factor: number): RGB {
   return rgb.map((c) => Math.round(Math.max(0, Math.min(255, c * factor)))) as RGB;
 }
@@ -67,11 +64,16 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
 
 const DIM_BRIGHTNESS = 0.18;
 const BRIGHTNESS_LEVELS = 64;
+// Fraction of the glow that's a flat, full-brightness "core" (the plateau),
+// with the rest split evenly into straight linear ramps down to
+// DIM_BRIGHTNESS on either side — a true linear gradient, not a curve.
+const PLATEAU_FRACTION = 0.35;
 
 /**
  * Builds one animation frame: a `cols`-wide bar made of `char`, with a
- * smooth glow — thin and dim at its edges, full brightness at its center —
- * sliding continuously across a dim base track as `frame` increases.
+ * linear-gradient glow — a flat full-brightness core, fading in a straight
+ * line to a dim base on either side — sliding continuously across the bar
+ * as `frame` increases.
  */
 export function buildFrame(options: {
   cols: number;
@@ -89,16 +91,18 @@ export function buildFrame(options: {
 
   const glow = Math.max(12, glowWidth ?? Math.floor(width / 1.3));
   // The glow travels on a circle of circumference `width`, so its bright
-  // peak is always visible somewhere on screen — no "off-screen dead zone"
-  // where the whole line goes uniformly dim while the peak wraps around.
+  // core is always visible somewhere on screen — no "off-screen dead zone"
+  // where the whole line goes uniformly dim while it wraps around.
   const center = frame % width;
-  const sigma = glow / 7; // smaller divisor = steeper falloff, a sharper-edged glow instead of a soft/blurry fade
+  const halfPlateau = (glow * PLATEAU_FRACTION) / 2;
+  const rampLength = Math.max(1, glow / 2 - halfPlateau);
 
   const brightnessAt = (i: number): number => {
     const direct = Math.abs(i - center);
     const offset = Math.min(direct, width - direct); // circular distance
-    const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
-    return DIM_BRIGHTNESS + (HOT_CAP - DIM_BRIGHTNESS) * gaussian;
+    if (offset <= halfPlateau) return 1;
+    const rampProgress = Math.min(1, (offset - halfPlateau) / rampLength);
+    return 1 - rampProgress * (1 - DIM_BRIGHTNESS);
   };
 
   const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
