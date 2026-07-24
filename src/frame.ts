@@ -60,7 +60,7 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
 }
 
 const DIM_BRIGHTNESS = 0.18;
-const BRIGHTNESS_LEVELS = 10;
+const BRIGHTNESS_LEVELS = 64;
 
 /**
  * Builds one animation frame: a `cols`-wide bar made of `char`, with a
