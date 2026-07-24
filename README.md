@@ -39,21 +39,22 @@ border.pulse('yellow'); // resume animating in a new color
 
 ## Shell-wide mode (any command, not just Node.js)
 
-Everything above requires a Node.js program to explicitly call the API. If you want the bar to react to **every command run in a terminal — Python, git, bash, anything** — there's a separate daemon + shell hook setup for that.
+Want the bar to react to **every command run in a terminal — Python, git, bash, anything** — with zero code changes? One-time setup:
 
-1. Start the daemon once per terminal (it holds the bar open and reads a small state file):
-   ```sh
-   npx cli-status-border-daemon &
-   ```
-2. Source the shell integration so every command drives it:
-   ```sh
-   # add to ~/.zshrc
-   source "$(npm root -g)/cli-status-border/shell/init.zsh"
-   # or ~/.bashrc
-   source "$(npm root -g)/cli-status-border/shell/init.bash"
-   ```
+```sh
+npm install -g cli-status-border
+cli-status-border
+```
 
-This hooks your shell's `preexec`/`precmd` (zsh) or the `DEBUG` trap + `PROMPT_COMMAND` (bash): the bar pulses yellow while a command runs, then settles to solid green (exit code 0) or red (non-zero) once it finishes — for any command, regardless of what language or tool it is.
+That opens a create-vite-style wizard: pick your color with the arrow keys, hit Enter, done — it saves the choice to `~/.cli-status-border.json` and installs the shell integration into your `~/.zshrc` / `~/.bashrc` automatically. Open a new terminal and the bar reacts to every command: pulsing in your chosen color while something runs, then green on success / red on failure.
+
+Change the color anytime (running terminals update live, no restart):
+
+```sh
+cli-status-border color
+```
+
+Under the hood: each terminal gets its own little daemon that draws the bar, and `preexec`/`precmd` hooks (zsh) or the `DEBUG` trap + `PROMPT_COMMAND` (bash) write busy/ok/error into a per-terminal state file the daemon watches. Colors can also be overridden per-terminal with `CLI_STATUS_BORDER_BUSY_COLOR` / `_OK_COLOR` / `_ERROR_COLOR` env vars.
 
 ## Options
 
