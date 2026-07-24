@@ -67,7 +67,20 @@ export class StatusBorder {
   private frame = 0;
   private active = false;
   private rows = 0;
-  private readonly onResize = () => (this.timer ? this.drawGlow() : this.drawSolid());
+  private readonly onResize = () => {
+    // The scroll region was pinned using the row count at start() time; if
+    // the terminal is resized (rows change, not just columns), that region
+    // goes stale relative to the actual screen, and the terminal's own
+    // reflow can scatter the bar into multiple broken fragments. Re-issue
+    // it with the current row count to keep it in sync.
+    const newRows = this.stream.rows ?? this.rows;
+    if (newRows !== this.rows) {
+      this.rows = newRows;
+      this.stream.write(setScrollRegion(2, this.rows));
+    }
+    if (this.timer) this.drawGlow();
+    else this.drawSolid();
+  };
   private readonly onExit = () => this.stop();
   private readonly onSigint = () => {
     this.stop();

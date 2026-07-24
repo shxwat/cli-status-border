@@ -88,6 +88,40 @@ describe('StatusBorder', () => {
     expect(stream.on).toHaveBeenCalledWith('resize', expect.any(Function));
   });
 
+  it('re-issues the scroll region on resize when the row count actually changed', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+
+    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => c[0] === 'resize'
+    )![1];
+
+    (stream as unknown as { rows: number }).rows = 40; // simulate a taller terminal
+    const callsBefore = writes(stream).length;
+    resizeHandler();
+
+    const newCalls = writes(stream).slice(callsBefore);
+    expect(newCalls.some((c) => c.includes('[2;40r'))).toBe(true);
+  });
+
+  it('does not re-issue the scroll region on resize when only columns changed', () => {
+    const stream = createMockStream();
+    const border = new StatusBorder({ stream });
+    border.start();
+
+    const resizeHandler = (stream.on as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c) => c[0] === 'resize'
+    )![1];
+
+    (stream as unknown as { columns: number }).columns = 120; // width-only change
+    const callsBefore = writes(stream).length;
+    resizeHandler();
+
+    const newCalls = writes(stream).slice(callsBefore);
+    expect(newCalls.some((c) => /\x1b\[\d+;\d+r/.test(c))).toBe(false);
+  });
+
   it('resets the scroll region and shows the cursor on stop', () => {
     const stream = createMockStream();
     const border = new StatusBorder({ stream });

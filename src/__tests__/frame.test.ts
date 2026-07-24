@@ -45,11 +45,9 @@ describe('buildFrame', () => {
     expect(frameA).not.toBe(frameB);
   });
 
-  it('wraps the pulse around continuously', () => {
-    const glow = Math.max(10, Math.floor(40 / 1.8));
-    const period = 40 + glow;
+  it('wraps the pulse around continuously (period = width, seamless loop)', () => {
     const frameA = buildFrame({ cols: 40, color: 'red', frame: 3 });
-    const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + period });
+    const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + 40 });
     expect(frameA).toBe(frameB);
   });
 

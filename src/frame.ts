@@ -82,12 +82,15 @@ export function buildFrame(options: {
   if (width === 0) return '';
 
   const glow = Math.max(10, glowWidth ?? Math.floor(width / 1.8));
-  const period = width + glow;
-  const center = frame % period; // the glow's center can travel slightly off either edge
+  // The glow travels on a circle of circumference `width`, so its bright
+  // peak is always visible somewhere on screen — no "off-screen dead zone"
+  // where the whole line goes uniformly dim while the peak wraps around.
+  const center = frame % width;
   const sigma = glow / 4;
 
   const brightnessAt = (i: number): number => {
-    const offset = i - center;
+    const direct = Math.abs(i - center);
+    const offset = Math.min(direct, width - direct); // circular distance
     const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
     return DIM_BRIGHTNESS + (1 - DIM_BRIGHTNESS) * gaussian;
   };
