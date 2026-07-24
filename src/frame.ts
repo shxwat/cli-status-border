@@ -67,7 +67,7 @@ export function buildSolidFrame(options: { cols: number; color: BorderColor; cha
   return paint(color, char.repeat(width), 1);
 }
 
-const DIM_BRIGHTNESS = 0.28;
+const DIM_BRIGHTNESS = 0.12;
 const BRIGHTNESS_LEVELS = 64;
 
 /**
@@ -92,7 +92,7 @@ export function buildFrame(options: {
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
-  const pulse = Math.max(4, pulseWidth ?? Math.floor(width * 0.85));
+  const pulse = Math.max(4, pulseWidth ?? Math.floor(width / 2.2));
   // The pulse travels on a circle of circumference `width`: as it slides
   // off the right edge it's simultaneously entering from the left, so the
   // loop is seamless with no gap or jump between passes.
