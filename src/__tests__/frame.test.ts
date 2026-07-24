@@ -46,7 +46,7 @@ describe('buildFrame', () => {
   });
 
   it('wraps the pulse around continuously', () => {
-    const glow = Math.max(8, Math.floor(40 / 2.5));
+    const glow = Math.max(10, Math.floor(40 / 1.8));
     const period = 40 + glow;
     const frameA = buildFrame({ cols: 40, color: 'red', frame: 3 });
     const frameB = buildFrame({ cols: 40, color: 'red', frame: 3 + period });
