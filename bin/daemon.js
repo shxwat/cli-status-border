@@ -27,12 +27,15 @@ border.start();
 
 function applyState(raw) {
   const state = raw.trim();
+  // Always pulse() (never succeed()/fail()) so the bar keeps animating the
+  // whole time — same continuous motion as running it directly — and only
+  // the color communicates state (busy/ok/error).
   if (state === 'busy') {
     border.pulse(BUSY_COLOR);
   } else if (state === 'ok') {
-    border.succeed();
+    border.pulse(OK_COLOR);
   } else if (state === 'error') {
-    border.fail();
+    border.pulse(ERROR_COLOR);
   } else if (state === 'stop') {
     border.stop();
     process.exit(0);
