@@ -92,7 +92,7 @@ export function buildFrame(options: {
   // peak is always visible somewhere on screen — no "off-screen dead zone"
   // where the whole line goes uniformly dim while the peak wraps around.
   const center = frame % width;
-  const sigma = glow / 4;
+  const sigma = glow / 7; // smaller divisor = steeper falloff, a sharper-edged glow instead of a soft/blurry fade
 
   const brightnessAt = (i: number): number => {
     const direct = Math.abs(i - center);
