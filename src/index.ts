@@ -38,10 +38,14 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The character underlined to form the line. Defaults to " " (a space — no visible glyph, just a literal colored underline). */
+  /** The character the line is drawn with. Defaults to "▔" (a solid, crisp, top-of-cell block). */
   char?: string;
-  /** Width of the moving pulse's glow, in columns. Defaults to roughly cols / 1.8. */
+  /** Width of the moving pulse's glow, in columns. Defaults to roughly cols / 1.3. */
   pulseWidth?: number;
+  /** Brightness (0-1) of the dimmest part of the line. Lower = more contrast. Defaults to 0.22. */
+  dimBrightness?: number;
+  /** Fraction (0-1) of the glow that's a flat full-brightness core. Defaults to 0.35. */
+  plateauFraction?: number;
   /** Animation redraw rate in frames per second. Defaults to 30. */
   fps?: number;
   /** How many columns the pulse travels per frame. Higher = faster. Defaults to 4. */
@@ -66,10 +70,12 @@ export interface StatusBorderOptions {
  */
 export class StatusBorder {
   private readonly stream: NodeJS.WriteStream;
-  private readonly char: string;
-  private readonly pulseWidth: number | undefined;
-  private readonly fps: number;
-  private readonly speed: number;
+  private char: string;
+  private pulseWidth: number | undefined;
+  private dimBrightness: number | undefined;
+  private plateauFraction: number | undefined;
+  private fps: number;
+  private speed: number;
   private color: BorderColor;
   private timer: ReturnType<typeof setInterval> | null = null;
   private frame = 0;
@@ -114,8 +120,28 @@ export class StatusBorder {
     this.color = options.color ?? 'green';
     this.char = options.char ?? '▔';
     this.pulseWidth = options.pulseWidth;
+    this.dimBrightness = options.dimBrightness;
+    this.plateauFraction = options.plateauFraction;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
+  }
+
+  /**
+   * Live-tune the glow's shape while it's running (used by the interactive
+   * tweak demo). Any omitted field is left unchanged.
+   */
+  configure(opts: {
+    pulseWidth?: number;
+    dimBrightness?: number;
+    plateauFraction?: number;
+    speed?: number;
+    char?: string;
+  }): void {
+    if (opts.pulseWidth !== undefined) this.pulseWidth = opts.pulseWidth;
+    if (opts.dimBrightness !== undefined) this.dimBrightness = opts.dimBrightness;
+    if (opts.plateauFraction !== undefined) this.plateauFraction = opts.plateauFraction;
+    if (opts.speed !== undefined) this.speed = opts.speed;
+    if (opts.char !== undefined) this.char = opts.char;
   }
 
   private get supported(): boolean {
@@ -129,7 +155,15 @@ export class StatusBorder {
   private drawGlow(): void {
     const cols = this.stream.columns ?? 80;
     this.write(
-      buildFrame({ cols, color: this.color, char: this.char, pulseWidth: this.pulseWidth, frame: this.frame })
+      buildFrame({
+        cols,
+        color: this.color,
+        char: this.char,
+        pulseWidth: this.pulseWidth,
+        dimBrightness: this.dimBrightness,
+        plateauFraction: this.plateauFraction,
+        frame: this.frame,
+      })
     );
   }
 

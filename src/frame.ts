@@ -82,10 +82,16 @@ export function buildFrame(options: {
   frame: number;
   glowWidth?: number;
   pulseWidth?: number;
+  /** Brightness (0-1) of the dimmest part of the line. Lower = more contrast. */
+  dimBrightness?: number;
+  /** Fraction (0-1) of the glow that's a flat full-brightness core. */
+  plateauFraction?: number;
 }): string {
   const { cols, color, frame } = options;
   const char = options.char ?? '▔';
   const glowWidth = options.glowWidth ?? options.pulseWidth;
+  const dimBrightness = options.dimBrightness ?? DIM_BRIGHTNESS;
+  const plateauFraction = options.plateauFraction ?? PLATEAU_FRACTION;
   const width = Math.max(0, cols);
   if (width === 0) return '';
 
@@ -94,7 +100,7 @@ export function buildFrame(options: {
   // core is always visible somewhere on screen — no "off-screen dead zone"
   // where the whole line goes uniformly dim while it wraps around.
   const center = frame % width;
-  const halfPlateau = (glow * PLATEAU_FRACTION) / 2;
+  const halfPlateau = (glow * plateauFraction) / 2;
   const rampLength = Math.max(1, glow / 2 - halfPlateau);
 
   const brightnessAt = (i: number): number => {
@@ -102,7 +108,7 @@ export function buildFrame(options: {
     const offset = Math.min(direct, width - direct); // circular distance
     if (offset <= halfPlateau) return 1;
     const rampProgress = Math.min(1, (offset - halfPlateau) / rampLength);
-    return 1 - rampProgress * (1 - DIM_BRIGHTNESS);
+    return 1 - rampProgress * (1 - dimBrightness);
   };
 
   const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
