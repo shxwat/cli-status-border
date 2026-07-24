@@ -89,33 +89,25 @@ function glowRgb(base: RGB, t: number, dimFloor: number, bloom: number): RGB {
   }) as RGB;
 }
 
-// The default line: a quarter-cell-thick stroke hugging the TOP edge of the
-// row. No universally-supported glyph draws that directly (the Block
-// Elements range only has bottom-aligned partials at that thickness, and
-// the top-aligned '🮂' from Symbols for Legacy Computing renders as tofu in
-// many fonts) — so it's drawn as the lower-three-quarters block in REVERSE
-// video: the glyph's 3/4 coverage becomes terminal-background, and the
-// uncovered top 1/4 of the cell becomes the line color.
-const DEFAULT_CHAR = '▆';
+// The default line glyph: upper one-eighth block — a thin stroke hugging
+// the TOP edge of the row, matching the reference recording. It's the only
+// top-aligned partial below '▀' in the universally-shipped Block Elements
+// range: the quarter-thick '🮂' (Symbols for Legacy Computing) renders as
+// tofu in common fonts, and faking a top-quarter line via reverse-video '▆'
+// leaves visible outline artifacts where the inverted area's background
+// doesn't exactly match the terminal's real background.
+const DEFAULT_CHAR = '▔';
 
 /**
  * Renders `text` in `color` at `brightness`. In `fill` mode the color is
  * applied as the BACKGROUND of the cells — the whole cell becomes a solid
  * block of color with zero antialiasing/grain (the smoothest a terminal can
  * render), at the cost of being a full cell tall. In foreground mode the
- * glyph itself is colored (thinner, but a colored glyph antialiases); with
- * `invert` the cell renders in reverse video (see DEFAULT_CHAR).
+ * glyph itself is colored (thinner, but a colored glyph antialiases).
  */
-export function paint(
-  color: BorderColor,
-  text: string,
-  brightness = 1,
-  fill = true,
-  invert = false
-): string {
+export function paint(color: BorderColor, text: string, brightness = 1, fill = true): string {
   const [r, g, b] = scale(baseRgb(color), brightness);
-  if (fill) return chalk.bgRgb(r, g, b)(text);
-  return invert ? chalk.rgb(r, g, b).inverse(text) : chalk.rgb(r, g, b)(text);
+  return fill ? chalk.bgRgb(r, g, b)(text) : chalk.rgb(r, g, b)(text);
 }
 
 /** Builds a solid, full-brightness bar (used for the settled success/fail state). */
@@ -128,10 +120,8 @@ export function buildSolidFrame(options: {
   const { cols, color, char } = options;
   const fill = options.fill ?? true;
   const width = Math.max(0, cols);
-  // No explicit char -> the default top-aligned reverse-video line.
-  const invert = !fill && char === undefined;
   const cell = fill ? ' ' : char ?? DEFAULT_CHAR;
-  return paint(color, cell.repeat(width), 1, fill, invert);
+  return paint(color, cell.repeat(width), 1, fill);
 }
 
 // Dim floor in gamma space. Near-invisible: the reference recording's
@@ -203,9 +193,6 @@ export function buildFrame(options: {
   // should come from the brightness gradient alone. (Also meaningless in
   // fill mode, where the whole cell is painted.)
   const taper = !fill && (options.taper ?? false);
-  // No explicit char (and no taper) -> the default top-aligned
-  // reverse-video line; see DEFAULT_CHAR.
-  const invert = !fill && !taper && options.char === undefined;
   const fixedChar = fill ? ' ' : options.char ?? DEFAULT_CHAR;
   const glowWidth = options.glowWidth ?? options.pulseWidth;
   const dimBrightness = options.dimBrightness ?? DIM_BRIGHTNESS;
@@ -250,8 +237,7 @@ export function buildFrame(options: {
     const t = bucket / BRIGHTNESS_LEVELS;
     const [r, g, b] = glowRgb(rgb, t, dimBrightness, bloom);
     const cell = glyphFor(bucket).repeat(count);
-    if (fill) return chalk.bgRgb(r, g, b)(cell);
-    return invert ? chalk.rgb(r, g, b).inverse(cell) : chalk.rgb(r, g, b)(cell);
+    return fill ? chalk.bgRgb(r, g, b)(cell) : chalk.rgb(r, g, b)(cell);
   };
 
   let out = '';

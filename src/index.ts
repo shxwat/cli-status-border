@@ -36,7 +36,7 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The character the line is drawn with. By default the line is a quarter-cell-thick stroke hugging the TOP edge of the row (drawn as a reverse-video lower-¾ block, so it needs no exotic glyphs). Passing any char here disables that and draws the char directly — e.g. "▔" (thin, top), "▂" (quarter, bottom), "▀" (thick, top). */
+  /** The character the line is drawn with. Defaults to "▔" (upper one-eighth block): a thin line hugging the top edge of the row. */
   char?: string;
   /** Width of the moving pulse's glow, in columns. Defaults to the full terminal width — spreading the gradient over every cell keeps adjacent cells' colors close, which is what makes it look smooth rather than banded. */
   pulseWidth?: number;
@@ -125,10 +125,7 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    // Left undefined by default: frame.ts then draws the top-aligned
-    // reverse-video quarter line (a '▆' lower-¾ block with fg/bg swapped,
-    // so the top quarter of the cell carries the color). Only universal
-    // Block Elements glyphs are involved — no Legacy Computing tofu.
+    // One look, one line: the thin top-edge '▔' stroke (frame.ts default).
     this.char = options.char;
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
