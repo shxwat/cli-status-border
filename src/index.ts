@@ -121,11 +121,14 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    this.char = options.char ?? '▔';
+    this.char = options.char ?? '▀';
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
     this.plateauFraction = options.plateauFraction;
-    this.fill = options.fill ?? true;
+    // Default to foreground mode: a solid upper-half block glyph (▀) fills
+    // the top half of the cell as a solid region — as smooth as a full
+    // background fill, but half the height (a thinner bar).
+    this.fill = options.fill ?? false;
     this.fps = options.fps ?? 30;
     this.speed = options.speed ?? 4;
   }
