@@ -43,8 +43,18 @@ function baseRgb(color: BorderColor): RGB {
   return NAMED_RGB[color as Exclude<BorderColor, `#${string}`>] ?? NAMED_RGB.green;
 }
 
+// brightness 0..1 dims toward black; brightness 1..HOT_CAP blends toward
+// white, so the very peak of the glow reads as a bright white-hot core
+// instead of just a saturated flat color — a much stronger, more obviously
+// "glowing" look than pure linear brightness scaling.
+const HOT_CAP = 1.6;
+
 function scale(rgb: RGB, factor: number): RGB {
-  return rgb.map((c) => Math.round(Math.max(0, Math.min(255, c * factor)))) as RGB;
+  if (factor <= 1) {
+    return rgb.map((c) => Math.round(Math.max(0, c * factor))) as RGB;
+  }
+  const t = Math.min(1, (factor - 1) / (HOT_CAP - 1));
+  return rgb.map((c) => Math.round(c + (255 - c) * t)) as RGB;
 }
 
 export function paint(color: BorderColor, text: string, brightness = 1): string {
@@ -92,7 +102,7 @@ export function buildFrame(options: {
     const direct = Math.abs(i - center);
     const offset = Math.min(direct, width - direct); // circular distance
     const gaussian = Math.exp(-(offset * offset) / (2 * sigma * sigma));
-    return DIM_BRIGHTNESS + (1 - DIM_BRIGHTNESS) * gaussian;
+    return DIM_BRIGHTNESS + (HOT_CAP - DIM_BRIGHTNESS) * gaussian;
   };
 
   const bucketOf = (i: number): number => Math.round(brightnessAt(i) * BRIGHTNESS_LEVELS);
