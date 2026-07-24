@@ -36,7 +36,7 @@ function resetScrollRegion(): string {
 export interface StatusBorderOptions {
   /** Bar color. A color name (green, red, yellow, blue, magenta, cyan, white, gray) or a hex string like "#ff8800". Defaults to "green". */
   color?: BorderColor;
-  /** The character the line is drawn with. Defaults to "▂" (lower one-quarter block — a thin-but-visible line, universally supported). Pass "▔" for a thinner top-hugging line or "▀" for a thicker one. */
+  /** The character the line is drawn with. By default the line is a quarter-cell-thick stroke hugging the TOP edge of the row (drawn as a reverse-video lower-¾ block, so it needs no exotic glyphs). Passing any char here disables that and draws the char directly — e.g. "▔" (thin, top), "▂" (quarter, bottom), "▀" (thick, top). */
   char?: string;
   /** Width of the moving pulse's glow, in columns. Defaults to the full terminal width — spreading the gradient over every cell keeps adjacent cells' colors close, which is what makes it look smooth rather than banded. */
   pulseWidth?: number;
@@ -74,7 +74,7 @@ export interface StatusBorderOptions {
  */
 export class StatusBorder {
   private readonly stream: NodeJS.WriteStream;
-  private char: string;
+  private char: string | undefined;
   private pulseWidth: number | undefined;
   private dimBrightness: number | undefined;
   private plateauFraction: number | undefined;
@@ -125,12 +125,11 @@ export class StatusBorder {
   constructor(options: StatusBorderOptions = {}) {
     this.stream = options.stream ?? process.stdout;
     this.color = options.color ?? 'green';
-    // Lower one-quarter block: twice the thickness of the one-eighth '▔'
-    // while staying in the core Block Elements range every monospace font
-    // ships. (The top-aligned quarter block '🮂' would keep the line at the
-    // top edge of the row, but it's from Symbols for Legacy Computing and
-    // renders as tofu boxes in fonts that lack that block.)
-    this.char = options.char ?? '▂';
+    // Left undefined by default: frame.ts then draws the top-aligned
+    // reverse-video quarter line (a '▆' lower-¾ block with fg/bg swapped,
+    // so the top quarter of the cell carries the color). Only universal
+    // Block Elements glyphs are involved — no Legacy Computing tofu.
+    this.char = options.char;
     this.pulseWidth = options.pulseWidth;
     this.dimBrightness = options.dimBrightness;
     this.plateauFraction = options.plateauFraction;

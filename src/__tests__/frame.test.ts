@@ -32,10 +32,17 @@ describe('buildSolidFrame', () => {
 });
 
 describe('buildFrame', () => {
-  it('defaults to a constant-height thin foreground line (▂) — no taper', () => {
+  it('defaults to a top-aligned reverse-video quarter line (▆ inverted) — no taper', () => {
     const frame = buildFrame({ cols: 40, color: 'green', frame: 20 });
-    expect(stripAnsi(frame)).toBe('▂'.repeat(40));
+    expect(stripAnsi(frame)).toBe('▆'.repeat(40));
     expect(frame).toContain('\x1b[38;2;'); // 24-bit foreground SGR
+    expect(frame).toContain('\x1b[7m'); // reverse video: color lands in the cell's top quarter
+  });
+
+  it('does not invert when an explicit char is given', () => {
+    const frame = buildFrame({ cols: 40, color: 'green', frame: 20, char: '▂' });
+    expect(stripAnsi(frame)).toBe('▂'.repeat(40));
+    expect(frame).not.toContain('\x1b[7m');
   });
 
   it('draws a constant-height stroke with the given char', () => {
