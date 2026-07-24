@@ -81,7 +81,7 @@ const BRIGHTNESS_LEVELS = 64;
 // Fraction of the glow that's a flat, full-brightness "core" (the plateau),
 // with the rest split evenly into straight linear ramps down to
 // DIM_BRIGHTNESS on either side — a true linear gradient, not a curve.
-const PLATEAU_FRACTION = 0.35;
+const PLATEAU_FRACTION = 0.12;
 
 /**
  * Builds one animation frame: a `cols`-wide bar made of `char`, with a

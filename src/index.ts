@@ -3,13 +3,11 @@ import { buildFrame, buildSolidFrame, BorderColor } from './frame';
 export type { BorderColor };
 
 const ESC = '\x1b';
-// CSI s / CSI u (SCOSC/SCORC): position-only save/restore. Deliberately not
-// using DECSC/DECRC (ESC 7 / ESC 8) — that variant also snapshots
-// origin-mode state, which some terminals resolve inconsistently once a
-// scroll region (DECSTBM) is active, causing the cursor to restore to the
-// wrong row.
-const SAVE_CURSOR = `${ESC}[s`;
-const RESTORE_CURSOR = `${ESC}[u`;
+// DECSC / DECRC (ESC 7 / ESC 8) for cursor save/restore. The CSI variant
+// (ESC[s / ESC[u) is echoed literally as stray "[" characters by some
+// terminals, which leaked visible brackets at the ends of the bar.
+const SAVE_CURSOR = `${ESC}7`;
+const RESTORE_CURSOR = `${ESC}8`;
 const HIDE_CURSOR = `${ESC}[?25l`;
 const SHOW_CURSOR = `${ESC}[?25h`;
 const CLEAR_LINE = `${ESC}[2K`;
